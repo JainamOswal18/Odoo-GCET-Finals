@@ -127,7 +127,7 @@ export const Contacts: React.FC = () => {
             if (editingId) {
                 // For update, use fetch directly to send FormData
                 const token = localStorage.getItem('shiv_auth_token');
-                const response = await fetch(`http://localhost:5000/api/contacts/${editingId}`, {
+                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/contacts/${editingId}`, {
                     method: 'PUT',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -142,7 +142,7 @@ export const Contacts: React.FC = () => {
             } else {
                 // For create, use fetch directly to send FormData
                 const token = localStorage.getItem('shiv_auth_token');
-                const response = await fetch('http://localhost:5000/api/contacts', {
+                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/contacts`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -224,24 +224,34 @@ export const Contacts: React.FC = () => {
 
         try {
             setLoading(true);
-            const token = localStorage.getItem('shiv_auth_token');
-            const response = await fetch(`http://localhost:5000/api/contacts/${editingId}/archive`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to archive contact');
-            }
-
+            await contactsApi.archive(editingId);
             await fetchContacts();
             setView('list');
             setEditingId(null);
             reset();
         } catch (err: any) {
             setError(err.message || 'Failed to archive contact');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRestore = async () => {
+        if (!editingId) return;
+
+        if (!confirm('Are you sure you want to restore this contact?')) {
+            return;
+        }
+
+        try {
+            setLoading(true);
+            await contactsApi.unarchive(editingId);
+            await fetchContacts();
+            setView('list');
+            setEditingId(null);
+            reset();
+        } catch (err: any) {
+            setError(err.message || 'Failed to restore contact');
         } finally {
             setLoading(false);
         }
@@ -484,14 +494,27 @@ export const Contacts: React.FC = () => {
                         )}
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Button
-                            variant="outline"
-                            leftIcon={<Archive className="w-4 h-4" />}
-                            onClick={handleArchive}
-                            disabled={loading || !editingId}
-                        >
-                            Archive
-                        </Button>
+                        {editingId && (
+                            contacts.find(c => c.id === editingId)?.active ? (
+                                <Button
+                                    variant="outline"
+                                    leftIcon={<Archive className="w-4 h-4" />}
+                                    onClick={handleArchive}
+                                    disabled={loading}
+                                >
+                                    Archive
+                                </Button>
+                            ) : (
+                                <Button
+                                    variant="outline"
+                                    leftIcon={<Archive className="w-4 h-4" />}
+                                    onClick={handleRestore}
+                                    disabled={loading}
+                                >
+                                    Restore
+                                </Button>
+                            )
+                        )}
                     </div>
                 </div>
 

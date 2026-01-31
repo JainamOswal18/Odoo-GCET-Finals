@@ -25,21 +25,21 @@ export interface Contact {
     name: string;
     email: string;
     phone?: string;
-    type?: "customer" | "vendor" | "both"; // Keep for backward compatibility
-    contactType?: "customer" | "vendor" | "both"; // What API actually returns
+    type?: "customer" | "vendor" | "both"; // Frontend field name
+    contactType?: "customer" | "vendor" | "both"; // Backend field name (contact_type)
     address?: string; // Street
     city?: string;
     state?: string;
     country?: string;
-    pincode?: string; // Keep for backward compatibility
-    postalCode?: string; // What API actually returns
+    pincode?: string; // Frontend field name
+    postalCode?: string; // Backend field name (postal_code)
     tags?: string[];
     image?: string;
-    imageUrl?: string; // What API actually returns
-    gstNumber?: string;
-    taxId?: string; // What API actually returns
-    isActive?: boolean;
-    active?: boolean; // What API actually returns
+    imageUrl?: string; // Backend field name (image_url)
+    gstNumber?: string; // Frontend field name
+    taxId?: string; // Backend field name (tax_id)
+    isActive?: boolean; // Frontend field name
+    active?: boolean; // Backend field name
     createdAt?: string;
     updatedAt?: string;
 }
@@ -49,21 +49,21 @@ export interface Product {
     id: string;
     name: string;
     sku?: string;
-    internalReference?: string; // From internal_reference in DB
+    internalReference?: string; // Backend field name (internal_reference)
     category: string;
     description?: string;
     salesPrice?: number; // Frontend field name
-    salePrice?: number; // API returns this from sale_price
+    salePrice?: number; // Backend field name (sale_price)
     purchasePrice?: number; // Frontend field name
-    costPrice?: number; // API returns this from cost_price
+    costPrice?: number; // Backend field name (cost_price)
     productType?: string;
     unitOfMeasure?: string;
     image?: string;
-    imageUrl?: string;
+    imageUrl?: string; // Backend field name (image_url)
     unit?: string;
     taxRate?: number;
-    isActive?: boolean;
-    active?: boolean;
+    isActive?: boolean; // Frontend field name
+    active?: boolean; // Backend field name
     createdAt?: string;
     updatedAt?: string;
 }
@@ -89,19 +89,32 @@ export interface Budget {
     analyticalAccountName?: string;
     periodStart: string;
     periodEnd: string;
-    plannedAmount?: number; // Frontend field
-    budgetedAmount?: number; // API returns this from budgeted_amount
+    plannedAmount?: number; // Frontend field name (deprecated, use budgetedAmount)
+    budgetedAmount?: number; // Backend field name (budgeted_amount)
     actualAmount?: number;
     theoreticalAmount?: number;
     achievementPercentage?: number;
     remainingBalance?: number;
     variance?: number;
     status?: string;
+    lines?: BudgetLine[]; // Budget lines array
     revisions?: BudgetRevision[];
-    isActive?: boolean;
-    active?: boolean;
+    isActive?: boolean; // Frontend field name
+    active?: boolean; // Backend field name
     createdAt?: string;
     updatedAt?: string;
+}
+
+export interface BudgetLine {
+    id?: string;
+    budgetId?: string;
+    analyticalAccountId?: string;
+    analyticalAccountName?: string;
+    analytical_account_name?: string; // Backend field name
+    budgetedAmount?: number;
+    budgeted_amount?: number; // Backend field name
+    actualAmount?: number;
+    actual_amount?: number; // Backend field name
 }
 
 export interface BudgetRevision {

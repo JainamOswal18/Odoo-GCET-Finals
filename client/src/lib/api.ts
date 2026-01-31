@@ -121,16 +121,42 @@ export const contactsApi = {
     });
     return handleApiResponse(response);
   },
+  archive: async (id: string) => {
+    const response = await apiRequest(`${API_ENDPOINTS.contacts}/${id}/archive`, {
+      method: 'PATCH',
+    });
+    return handleApiResponse(response);
+  },
+  unarchive: async (id: string) => {
+    const response = await apiRequest(`${API_ENDPOINTS.contacts}/${id}/unarchive`, {
+      method: 'PATCH',
+    });
+    return handleApiResponse(response);
+  },
 };
 
 // ============================================================================
 // PRODUCTS API
 // ============================================================================
 export const productsApi = {
-  getAll: async (): Promise<any[]> => {
-    const response = await apiRequest(API_ENDPOINTS.products);
-    const data = await handleApiResponse(response);
-    return extractDataArray(data, 'products');
+  getAll: async (includeArchived: boolean = true): Promise<any[]> => {
+    // Fetch both active and archived products by making two requests
+    if (includeArchived) {
+      const [activeResponse, archivedResponse] = await Promise.all([
+        apiRequest(`${API_ENDPOINTS.products}?active=1&limit=100`),
+        apiRequest(`${API_ENDPOINTS.products}?active=0&limit=100`)
+      ]);
+      const activeData = await handleApiResponse(activeResponse);
+      const archivedData = await handleApiResponse(archivedResponse);
+      return [
+        ...extractDataArray(activeData, 'products'),
+        ...extractDataArray(archivedData, 'products')
+      ];
+    } else {
+      const response = await apiRequest(`${API_ENDPOINTS.products}?limit=100`);
+      const data = await handleApiResponse(response);
+      return extractDataArray(data, 'products');
+    }
   },
   getById: async (id: string) => {
     const response = await apiRequest(`${API_ENDPOINTS.products}/${id}`);
@@ -153,6 +179,18 @@ export const productsApi = {
   delete: async (id: string) => {
     const response = await apiRequest(`${API_ENDPOINTS.products}/${id}`, {
       method: 'DELETE',
+    });
+    return handleApiResponse(response);
+  },
+  archive: async (id: string) => {
+    const response = await apiRequest(`${API_ENDPOINTS.products}/${id}/archive`, {
+      method: 'PATCH',
+    });
+    return handleApiResponse(response);
+  },
+  unarchive: async (id: string) => {
+    const response = await apiRequest(`${API_ENDPOINTS.products}/${id}/unarchive`, {
+      method: 'PATCH',
     });
     return handleApiResponse(response);
   },
@@ -191,6 +229,12 @@ export const analyticalAccountsApi = {
     });
     return handleApiResponse(response);
   },
+  archive: async (id: string) => {
+    const response = await apiRequest(`${API_ENDPOINTS.analyticalAccounts}/${id}/archive`, {
+      method: 'PATCH',
+    });
+    return handleApiResponse(response);
+  },
 };
 
 // ============================================================================
@@ -223,6 +267,12 @@ export const budgetsApi = {
   delete: async (id: string) => {
     const response = await apiRequest(`${API_ENDPOINTS.budgets}/${id}`, {
       method: 'DELETE',
+    });
+    return handleApiResponse(response);
+  },
+  archive: async (id: string) => {
+    const response = await apiRequest(`${API_ENDPOINTS.budgets}/${id}/archive`, {
+      method: 'PATCH',
     });
     return handleApiResponse(response);
   },

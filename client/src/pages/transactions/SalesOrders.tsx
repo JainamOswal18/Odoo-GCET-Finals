@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Save, FileText } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Input, Card, Select } from "@/components/ui";
-import { MOCK_CONTACTS, MOCK_PRODUCTS } from "@/lib/mock";
-import type { SalesOrder, LineItem } from "@/lib/types";
+import { salesOrdersApi, contactsApi, productsApi } from "@/lib/api";
+import type { SalesOrder } from "@/lib/types";
 
 const lineItemSchema = z.object({
     productId: z.string().min(1, "Product is required"),
@@ -24,12 +24,36 @@ const salesOrderSchema = z.object({
 
 type SOFormData = z.infer<typeof salesOrderSchema>;
 
-const MOCK_SOS: SalesOrder[] = [];
-
 export const SalesOrders: React.FC = () => {
     const [view, setView] = useState<"list" | "form">("list");
-    const [orders, setOrders] = useState<SalesOrder[]>(MOCK_SOS);
+    const [orders, setOrders] = useState<SalesOrder[]>([]);
+    const [contacts, setContacts] = useState<any[]>([]);
+    const [products, setProducts] = useState<any[]>([]);
     const [status, setStatus] = useState<"draft" | "confirmed" | "done" | "cancelled">("draft");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            const [ordersData, contactsData, productsData] = await Promise.all([
+                salesOrdersApi.getAll(),
+                contactsApi.getAll(),
+                productsApi.getAll()
+            ]);
+            setOrders(ordersData as SalesOrder[]);
+            setContacts(contactsData);
+            setProducts(productsData);
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch data');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const {
         register,
@@ -64,50 +88,35 @@ export const SalesOrders: React.FC = () => {
         return sum + calculateLineTotal(item.quantity || 0, item.unitPrice || 0);
     }, 0) || 0;
 
-    const onSubmit = (data: SOFormData) => {
-        const customer = MOCK_CONTACTS.find(c => c.id === data.customerId);
+    const onSubmit = async (data: SOFormData) => {
+        try {
+            setLoading(true);
+            setError(null);
 
-        const processedLineItems: LineItem[] = data.lineItems.map((item, index) => {
-            const product = MOCK_PRODUCTS.find(p => p.id === item.productId);
-            const subtotal = item.quantity * item.unitPrice;
-            const taxAmount = subtotal * 0.18;
-            const total = subtotal + taxAmount;
-
-            return {
-                id: `${index + 1}`,
-                productId: item.productId,
-                productName: product?.name || "",
+            const lineItemsPayload = data.lineItems.map((item) => ({
+                product_id: item.productId,
                 quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                taxRate: 18,
-                taxAmount,
-                subtotal,
-                total,
+                unit_price: item.unitPrice,
+            }));
+
+            const payload = {
+                customer_id: data.customerId,
+                order_date: data.orderDate,
+                expected_date: data.expectedDate || null,
+                status: status,
+                notes: data.notes || null,
+                line_items: lineItemsPayload,
             };
-        });
 
-        const subtotal = processedLineItems.reduce((sum, item) => sum + item.subtotal, 0);
-        const taxTotal = processedLineItems.reduce((sum, item) => sum + item.taxAmount, 0);
-
-        const newSO: SalesOrder = {
-            id: crypto.randomUUID(),
-            orderNumber: `SO${String(orders.length + 1).padStart(4, '0')}`,
-            customerId: data.customerId,
-            customerName: customer?.name || "",
-            orderDate: data.orderDate,
-            expectedDate: data.expectedDate,
-            status: status,
-            lineItems: processedLineItems,
-            subtotal,
-            taxTotal,
-            grandTotal: subtotal + taxTotal,
-            notes: data.notes,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
-        setOrders((prev) => [...prev, newSO]);
-        setView("list");
-        reset();
+            await salesOrdersApi.create(payload);
+            await fetchData();
+            setView("list");
+            reset();
+        } catch (err: any) {
+            setError(err.message || 'Failed to save sales order');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleConfirm = () => {
@@ -128,6 +137,11 @@ export const SalesOrders: React.FC = () => {
     if (view === "list") {
         return (
             <div className="space-y-6">
+                {error && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                        {error}
+                    </div>
+                )}
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Sales Orders</h1>
@@ -193,8 +207,8 @@ export const SalesOrders: React.FC = () => {
                 </div>
 
                 <div className="flex space-x-2">
-                    <Button onClick={handleSave} leftIcon={<Save className="w-4 h-4" />}>Save</Button>
-                    <Button onClick={handleConfirm} disabled={status === "confirmed"}>Confirm</Button>
+                    <Button onClick={handleSave} leftIcon={<Save className="w-4 h-4" />} disabled={loading}>Save</Button>
+                    <Button onClick={handleConfirm} disabled={status === "confirmed" || loading}>Confirm</Button>
                     <Button variant="outline" onClick={() => window.print()}>Print</Button>
                     <Button variant="outline">Send</Button>
                     <Button variant="outline" onClick={handleCancel} disabled={status === "cancelled"}>Cancel</Button>
@@ -220,7 +234,7 @@ export const SalesOrders: React.FC = () => {
                 <div className="grid grid-cols-2 gap-6 mb-6">
                     <Select
                         label="Customer Name"
-                        options={MOCK_CONTACTS.filter(c => c.type === "customer" || c.type === "both").map(c => ({
+                        options={contacts.filter(c => (c.type === "customer" || c.type === "both") || (c.contactType === "customer" || c.contactType === "both")).map(c => ({
                             value: c.id,
                             label: c.name
                         }))}
@@ -248,10 +262,10 @@ export const SalesOrders: React.FC = () => {
                                     <td className="p-2">{index + 1}</td>
                                     <td className="p-2">
                                         <Select
-                                            options={MOCK_PRODUCTS.map(p => ({ value: p.id, label: p.name }))}
+                                            options={products.map(p => ({ value: p.id, label: p.name }))}
                                             value={watchLineItems[index]?.productId}
                                             onValueChange={(val) => {
-                                                const prod = MOCK_PRODUCTS.find(p => p.id === val);
+                                                const prod = products.find(p => p.id === val);
                                                 setValue(`lineItems.${index}.productId`, val);
                                                 if (prod) setValue(`lineItems.${index}.unitPrice`, prod.salesPrice);
                                             }}

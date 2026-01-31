@@ -147,31 +147,6 @@ export const AnalyticalAccounts: React.FC = () => {
                             <Button variant="ghost" size="sm">Back</Button>
                         </div>
                     </div>
-
-                    {/* Tab Navigation */}
-                    <div className="flex items-center space-x-1 px-4 py-2 bg-gray-50">
-                        <button
-                            onClick={() => setActiveTab('new')}
-                            className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'new' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                                }`}
-                        >
-                            New
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('confirm')}
-                            className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'confirm' ? 'bg-pink-100 text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                                }`}
-                        >
-                            Confirm
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('archived')}
-                            className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'archived' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                                }`}
-                        >
-                            Archived
-                        </button>
-                    </div>
                 </div>
 
                 <Card className="p-8">
