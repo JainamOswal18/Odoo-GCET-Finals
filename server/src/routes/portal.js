@@ -11,6 +11,8 @@ router.get('/dashboard', portalController.getDashboard);
 router.get('/invoices', portalController.getInvoices);
 router.get('/invoices/:id', portalController.getInvoiceById);
 
+router.get('/orders', portalController.getOrders);
+
 router.get('/bills', portalController.getBills);
 router.get('/bills/:id', portalController.getBillById);
 

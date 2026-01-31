@@ -6,7 +6,7 @@ import { runQuery, closeDatabase, initializeDatabase } from '../src/config/datab
 async function seed() {
     try {
         console.log('Starting database seeding...');
-        
+
         // Initialize database schema first
         await initializeDatabase();
         console.log('✓ Database schema initialized');
@@ -42,14 +42,14 @@ async function seed() {
         );
         console.log('✓ Sample contacts created');
 
-        // Create Portal Users (linked to contacts)
+        // Create Portal Users (linked to contacts) - using DIFFERENT emails to avoid constraint
         const portalPassword = await bcrypt.hash('Portal@123', 10);
-        
+
         await runQuery(
             `INSERT INTO users (login_id, email, password_hash, full_name, role, contact_id)
        VALUES 
-       ('customer01', 'xyz@customer.com', ?, 'XYZ Customer', 'portal', 2),
-       ('premium01', 'contact@premiumretail.com', ?, 'Premium Retail Ltd', 'portal', 4)`,
+       ('customer01', 'customer01@portal.com', ?, 'XYZ Customer', 'portal', 2),
+       ('premium01', 'premium01@portal.com', ?, 'Premium Retail Ltd', 'portal', 4)`,
             [portalPassword, portalPassword]
         );
         console.log('✓ Portal users created');
@@ -222,31 +222,31 @@ async function seed() {
         console.log('\n' + '='.repeat(60));
         console.log('📋 LOGIN CREDENTIALS');
         console.log('='.repeat(60));
-        
+
         console.log('\n🔐 ADMIN USERS:');
         console.log('─'.repeat(60));
         console.log('  1. System Administrator');
         console.log('     Login ID: admin123');
         console.log('     Password: admin123');
         console.log('     Email:    admin@shivfurniture.com');
-        
+
         console.log('\n  2. Sales Manager');
         console.log('     Login ID: manager01');
         console.log('     Password: User@123');
         console.log('     Email:    manager@shivfurniture.com');
-        
+
         console.log('\n🌐 PORTAL USERS (Customers):');
         console.log('─'.repeat(60));
         console.log('  1. XYZ Customer');
         console.log('     Login ID: customer01');
         console.log('     Email:    xyz@customer.com');
         console.log('     Password: Portal@123');
-        
+
         console.log('\n  2. Premium Retail Ltd');
         console.log('     Login ID: premium01');
         console.log('     Email:    contact@premiumretail.com');
         console.log('     Password: Portal@123');
-        
+
         console.log('\n' + '='.repeat(60));
         console.log('⚠️  Please change all passwords after first login!');
         console.log('='.repeat(60) + '\n');

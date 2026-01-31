@@ -85,13 +85,13 @@ export const Products: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
-            
+
             if (editingId) {
                 await productsApi.update(editingId, data);
             } else {
                 await productsApi.create(data);
             }
-            
+
             await fetchProducts();
             setView("list");
             reset();
@@ -121,9 +121,50 @@ export const Products: React.FC = () => {
         setView("form");
     };
 
-    const filteredProducts = products.filter((p) =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleArchive = async () => {
+        if (!editingId) return;
+
+        if (!confirm('Are you sure you want to archive this product?')) {
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const token = localStorage.getItem('shiv_auth_token');
+            const response = await fetch(`http://localhost:5000/api/products/${editingId}/archive`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to archive product');
+            }
+
+            await fetchProducts();
+            setView('list');
+            setEditingId(null);
+            reset();
+        } catch (err: any) {
+            setError(err.message || 'Failed to archive product');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Filter products based on activeTab and search
+    const filteredProducts = products.filter((product) => {
+        // Filter by active status based on tab
+        const isActive = Number(product.active ?? 1); // Default to active if undefined
+        const activeFilter = activeTab === 'archived' ? isActive === 0 : isActive === 1;
+
+        // Filter by search term
+        const searchFilter = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (product.category || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+        return activeFilter && searchFilter;
+    });
 
     if (view === "list") {
         return (
@@ -144,6 +185,28 @@ export const Products: React.FC = () => {
                             {error}
                         </div>
                     )}
+
+                    {/* Tabs for filtering */}
+                    <div className="flex items-center space-x-1 mb-4 border-b border-gray-200">
+                        <button
+                            onClick={() => setActiveTab('new')}
+                            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'new'
+                                    ? 'border-indigo-600 text-indigo-600'
+                                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            Active
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('archived')}
+                            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'archived'
+                                    ? 'border-indigo-600 text-indigo-600'
+                                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            Archived
+                        </button>
+                    </div>
 
                     <div className="flex items-center space-x-4 mb-6">
                         <div className="relative flex-1 max-w-sm">
@@ -170,46 +233,46 @@ export const Products: React.FC = () => {
                             No products found. Click "New Product" to create one.
                         </div>
                     ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 text-gray-700 font-medium">
-                                <tr>
-                                    <th className="px-4 py-3 rounded-tl-lg">Product Name</th>
-                                    <th className="px-4 py-3">Category</th>
-                                    <th className="px-4 py-3 text-right">Sales Price</th>
-                                    <th className="px-4 py-3 text-right">Cost Price</th>
-                                    <th className="px-4 py-3 rounded-tr-lg">SKU</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {filteredProducts.map((product) => (
-                                    <tr
-                                        key={product.id}
-                                        className="hover:bg-gray-50 cursor-pointer transition-colors"
-                                        onClick={() => handleEdit(product)}
-                                    >
-                                        <td className="px-4 py-3 font-medium text-gray-900">
-                                            {product.name}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className="px-2 py-1 bg-violet-50 text-violet-700 rounded-full text-xs">
-                                                {product.category}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-right text-gray-900 font-medium">
-                                            ₹{(product.salesPrice || product.salePrice || 0).toFixed(2)}
-                                        </td>
-                                        <td className="px-4 py-3 text-right text-gray-500">
-                                            ₹{(product.purchasePrice || product.costPrice || 0).toFixed(2)}
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-400 font-mono text-xs">
-                                            {product.sku || product.internalReference || '-'}
-                                        </td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-50 text-gray-700 font-medium">
+                                    <tr>
+                                        <th className="px-4 py-3 rounded-tl-lg">Product Name</th>
+                                        <th className="px-4 py-3">Category</th>
+                                        <th className="px-4 py-3 text-right">Sales Price</th>
+                                        <th className="px-4 py-3 text-right">Cost Price</th>
+                                        <th className="px-4 py-3 rounded-tr-lg">SKU</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {filteredProducts.map((product) => (
+                                        <tr
+                                            key={product.id}
+                                            className="hover:bg-gray-50 cursor-pointer transition-colors"
+                                            onClick={() => handleEdit(product)}
+                                        >
+                                            <td className="px-4 py-3 font-medium text-gray-900">
+                                                {product.name}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className="px-2 py-1 bg-violet-50 text-violet-700 rounded-full text-xs">
+                                                    {product.category}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-gray-900 font-medium">
+                                                ₹{(product.salesPrice || product.salePrice || 0).toFixed(2)}
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-gray-500">
+                                                ₹{(product.purchasePrice || product.costPrice || 0).toFixed(2)}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-400 font-mono text-xs">
+                                                {product.sku || product.internalReference || '-'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </Card>
             </div>
@@ -261,11 +324,17 @@ export const Products: React.FC = () => {
                     <Button
                         onClick={handleSubmit(onSubmit)}
                         leftIcon={<Save className="w-4 h-4" />}
+                        disabled={loading}
                     >
-                        Confirm
+                        {loading ? 'Saving...' : (editingId ? 'Update' : 'Save')}
                     </Button>
-                    <Button variant="outline" leftIcon={<Archive className="w-4 h-4" />}>
-                        Archived
+                    <Button
+                        variant="outline"
+                        leftIcon={<Archive className="w-4 h-4" />}
+                        onClick={handleArchive}
+                        disabled={loading || !editingId}
+                    >
+                        Archive
                     </Button>
                 </div>
             </div>

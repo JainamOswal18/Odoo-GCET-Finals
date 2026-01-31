@@ -1,12 +1,13 @@
 ﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Filter, Save, Archive, Upload, X, Loader2 } from "lucide-react";
+import { Plus, Search, Filter, Save, Archive, Upload, X, Loader2, UserPlus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Input, Card, Select } from "@/components/ui";
 import { contactsApi } from "@/lib/api";
 import type { Contact } from "@/lib/types";
+import { CreateUserModal } from "@/components/CreateUserModal";
 
 // Schema matching the wireframe fields
 const contactSchema = z.object({
@@ -34,6 +35,8 @@ export const Contacts: React.FC = () => {
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+    const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
     const navigate = useNavigate();
 
     // Fetch contacts on mount
@@ -97,7 +100,7 @@ export const Contacts: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
-            
+
             // Use FormData to support both JSON fields and file upload
             const formData = new FormData();
             formData.append('name', data.name);
@@ -114,13 +117,13 @@ export const Contacts: React.FC = () => {
                 const tagsArray = Array.isArray(data.tags) ? data.tags : [];
                 formData.append('tags', JSON.stringify(tagsArray));
             }
-            
+
             // Handle image upload
             const imageInput = document.getElementById('image-upload') as HTMLInputElement;
             if (imageInput?.files?.[0]) {
                 formData.append('image', imageInput.files[0]);
             }
-            
+
             if (editingId) {
                 // For update, use fetch directly to send FormData
                 const token = localStorage.getItem('shiv_auth_token');
@@ -131,7 +134,7 @@ export const Contacts: React.FC = () => {
                     },
                     body: formData
                 });
-                
+
                 if (!response.ok) {
                     const error = await response.json();
                     throw new Error(error.error || 'Update failed');
@@ -146,13 +149,13 @@ export const Contacts: React.FC = () => {
                     },
                     body: formData
                 });
-                
+
                 if (!response.ok) {
                     const error = await response.json();
                     throw new Error(error.error || 'Create failed');
                 }
             }
-            
+
             await fetchContacts();
             setView("list");
             reset();
@@ -168,7 +171,7 @@ export const Contacts: React.FC = () => {
 
     const handleEdit = (contact: Contact) => {
         setEditingId(contact.id);
-        
+
         // Handle tags that might be string or array
         let tags = contact.tags || [];
         if (typeof tags === 'string') {
@@ -179,7 +182,7 @@ export const Contacts: React.FC = () => {
             }
         }
         if (!Array.isArray(tags)) tags = [];
-        
+
         reset({
             name: contact.name,
             email: contact.email,
@@ -202,9 +205,62 @@ export const Contacts: React.FC = () => {
         setView("form");
     };
 
-    const filteredContacts = contacts.filter((c) =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleCreateUser = () => {
+        if (editingId) {
+            const contact = contacts.find(c => c.id === editingId);
+            if (contact) {
+                setSelectedContact(contact);
+                setShowCreateUserModal(true);
+            }
+        }
+    };
+
+    const handleArchive = async () => {
+        if (!editingId) return;
+
+        if (!confirm('Are you sure you want to archive this contact?')) {
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const token = localStorage.getItem('shiv_auth_token');
+            const response = await fetch(`http://localhost:5000/api/contacts/${editingId}/archive`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to archive contact');
+            }
+
+            await fetchContacts();
+            setView('list');
+            setEditingId(null);
+            reset();
+        } catch (err: any) {
+            setError(err.message || 'Failed to archive contact');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Filter contacts based on activeTab and search
+    const filteredContacts = contacts.filter((contact) => {
+        // Filter by active status based on tab
+        // Convert to number to handle SQLite 0/1 or boolean true/false
+        const isActive = Number(contact.active ?? 1); // Default to active if undefined
+        const activeFilter = activeTab === 'archived' ? isActive === 0 : isActive === 1;
+
+        // Filter by search term
+        const searchFilter = contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (contact.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (contact.phone || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+        return activeFilter && searchFilter;
+    });
 
     if (view === "list") {
         return (
@@ -225,6 +281,28 @@ export const Contacts: React.FC = () => {
                             {error}
                         </div>
                     )}
+
+                    {/* Tabs for filtering */}
+                    <div className="flex items-center space-x-1 mb-4 border-b border-gray-200">
+                        <button
+                            onClick={() => setActiveTab('new')}
+                            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'new'
+                                    ? 'border-indigo-600 text-indigo-600'
+                                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            Active
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('archived')}
+                            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'archived'
+                                    ? 'border-indigo-600 text-indigo-600'
+                                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            Archived
+                        </button>
+                    </div>
 
                     <div className="flex items-center space-x-4 mb-6">
                         <div className="relative flex-1 max-w-sm">
@@ -272,67 +350,67 @@ export const Contacts: React.FC = () => {
                                             console.log('Postal Code:', contact.postalCode, contact.pincode);
                                         }
                                         return (
-                                        <tr
-                                            key={contact.id}
-                                            className="hover:bg-gray-50 cursor-pointer transition-colors"
-                                            onClick={() => handleEdit(contact)}
-                                        >
-                                            <td className="px-4 py-3 font-medium text-gray-900">
-                                                {contact.name}
-                                            </td>
-                                            <td className="px-4 py-3 text-gray-500">{contact.phone}</td>
-                                            <td className="px-4 py-3 text-gray-500">{contact.email}</td>
-                                            <td className="px-4 py-3 text-gray-500">
-                                                {contact.city || "-"}
-                                            </td>
-                                            <td className="px-4 py-3 text-gray-500">
-                                                {contact.pincode || contact.postalCode || "-"}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span
-                                                    className={`px-2 py-1 rounded-full text-xs capitalize ${(contact.type || contact.contactType) === "vendor"
-                                                        ? "bg-orange-100 text-orange-700"
-                                                        : "bg-blue-100 text-blue-700"
-                                                        }`}
-                                                >
-                                                    {contact.type || contact.contactType}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex gap-1 flex-wrap">
-                                                    {(() => {
-                                                        // Handle tags that might be string or array
-                                                        let tags = contact.tags;
-                                                        if (typeof tags === 'string') {
-                                                            try {
-                                                                tags = JSON.parse(tags);
-                                                            } catch (e) {
-                                                                tags = [];
+                                            <tr
+                                                key={contact.id}
+                                                className="hover:bg-gray-50 cursor-pointer transition-colors"
+                                                onClick={() => handleEdit(contact)}
+                                            >
+                                                <td className="px-4 py-3 font-medium text-gray-900">
+                                                    {contact.name}
+                                                </td>
+                                                <td className="px-4 py-3 text-gray-500">{contact.phone}</td>
+                                                <td className="px-4 py-3 text-gray-500">{contact.email}</td>
+                                                <td className="px-4 py-3 text-gray-500">
+                                                    {contact.city || "-"}
+                                                </td>
+                                                <td className="px-4 py-3 text-gray-500">
+                                                    {contact.pincode || contact.postalCode || "-"}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span
+                                                        className={`px-2 py-1 rounded-full text-xs capitalize ${(contact.type || contact.contactType) === "vendor"
+                                                            ? "bg-orange-100 text-orange-700"
+                                                            : "bg-blue-100 text-blue-700"
+                                                            }`}
+                                                    >
+                                                        {contact.type || contact.contactType}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex gap-1 flex-wrap">
+                                                        {(() => {
+                                                            // Handle tags that might be string or array
+                                                            let tags = contact.tags;
+                                                            if (typeof tags === 'string') {
+                                                                try {
+                                                                    tags = JSON.parse(tags);
+                                                                } catch (e) {
+                                                                    tags = [];
+                                                                }
                                                             }
-                                                        }
-                                                        if (!Array.isArray(tags)) tags = [];
-                                                        
-                                                        return (
-                                                            <>
-                                                                {tags.slice(0, 2).map((tag, idx) => (
-                                                                    <span
-                                                                        key={idx}
-                                                                        className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
-                                                                    >
-                                                                        {tag}
-                                                                    </span>
-                                                                ))}
-                                                                {tags.length > 2 && (
-                                                                    <span className="text-xs text-gray-400">
-                                                                        +{tags.length - 2}
-                                                                    </span>
-                                                                )}
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </div>
-                                            </td>
-                                        </tr>
+                                                            if (!Array.isArray(tags)) tags = [];
+
+                                                            return (
+                                                                <>
+                                                                    {tags.slice(0, 2).map((tag, idx) => (
+                                                                        <span
+                                                                            key={idx}
+                                                                            className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
+                                                                        >
+                                                                            {tag}
+                                                                        </span>
+                                                                    ))}
+                                                                    {tags.length > 2 && (
+                                                                        <span className="text-xs text-gray-400">
+                                                                            +{tags.length - 2}
+                                                                        </span>
+                                                                    )}
+                                                                </>
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                </td>
+                                            </tr>
                                         );
                                     })}
                                 </tbody>
@@ -393,9 +471,25 @@ export const Contacts: React.FC = () => {
 
                 {/* Action Buttons */}
                 <div className="flex items-center justify-between p-4">
-                    <div></div>
                     <div className="flex items-center space-x-2">
-                        <Button variant="outline" leftIcon={<Archive className="w-4 h-4" />}>
+                        {editingId && (
+                            <Button
+                                variant="primary"
+                                leftIcon={<UserPlus className="w-4 h-4" />}
+                                onClick={handleCreateUser}
+                                disabled={loading}
+                            >
+                                Create User
+                            </Button>
+                        )}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Button
+                            variant="outline"
+                            leftIcon={<Archive className="w-4 h-4" />}
+                            onClick={handleArchive}
+                            disabled={loading || !editingId}
+                        >
                             Archive
                         </Button>
                     </div>
@@ -409,7 +503,7 @@ export const Contacts: React.FC = () => {
                         {error}
                     </div>
                 )}
-                
+
                 <div className="mb-8">
                     <Input
                         placeholder="e.g. Azure Interior"
@@ -593,6 +687,23 @@ export const Contacts: React.FC = () => {
                     </Button>
                 </div>
             </Card>
+
+            {/* Create User Modal */}
+            {selectedContact && (
+                <CreateUserModal
+                    isOpen={showCreateUserModal}
+                    onClose={() => {
+                        setShowCreateUserModal(false);
+                        setSelectedContact(null);
+                    }}
+                    contactId={Number(selectedContact.id)}
+                    contactName={selectedContact.name}
+                    contactEmail={selectedContact.email}
+                    onSuccess={() => {
+                        fetchContacts();
+                    }}
+                />
+            )}
         </div >
     );
 };

@@ -27,6 +27,8 @@ router.put('/:id', budgetController.update);
 
 router.put('/:id/lines', budgetController.updateLines);
 
+router.patch('/:id/archive', requireAdmin, budgetController.archive);
+
 router.delete('/:id', budgetController.delete);
 
 router.post('/:id/refresh-actuals', budgetController.refreshActuals);

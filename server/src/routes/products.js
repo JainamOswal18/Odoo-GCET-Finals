@@ -23,6 +23,6 @@ router.get('/:id', productController.getById);
 
 router.put('/:id', productController.update);
 
-router.delete('/:id/archive', requireAdmin, productController.archive);
+router.patch('/:id/archive', requireAdmin, productController.archive);
 
 export default router;

@@ -76,6 +76,7 @@ export interface AnalyticalAccount {
     description?: string;
     parentId?: string;
     isActive: boolean;
+    active?: boolean; // What API actually returns
     createdAt: string;
     updatedAt: string;
 }

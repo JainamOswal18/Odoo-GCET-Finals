@@ -29,8 +29,8 @@ router.put('/:id',
   contactController.update
 );
 
-router.delete('/:id/archive', requireAdmin, contactController.archive);
+router.patch('/:id/archive', requireAdmin, contactController.archive);
 
-router.post('/:id/restore', requireAdmin, contactController.restore);
+router.patch('/:id/unarchive', requireAdmin, contactController.restore);
 
 export default router;

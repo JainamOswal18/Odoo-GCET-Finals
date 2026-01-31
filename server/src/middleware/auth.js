@@ -4,13 +4,13 @@ import { getQuery } from '../config/database.js';
 const authenticate = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    
+
     if (!token) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     const user = await getQuery(
       'SELECT id, login_id, email, full_name, role, contact_id, active FROM users WHERE id = ?',
       [decoded.userId]
@@ -36,13 +36,13 @@ const authenticate = async (req, res, next) => {
 const authenticatePortal = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    
+
     if (!token) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     const user = await getQuery(
       `SELECT u.*, c.name as contact_name, c.email as contact_email 
        FROM users u

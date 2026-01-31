@@ -54,13 +54,13 @@ export const AnalyticalAccounts: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
-            
+
             if (editingId) {
                 await analyticalAccountsApi.update(editingId, data);
             } else {
                 await analyticalAccountsApi.create(data);
             }
-            
+
             await fetchAccounts();
             setView("list");
             reset();
@@ -88,9 +88,50 @@ export const AnalyticalAccounts: React.FC = () => {
         setView("form");
     };
 
-    const filteredAccounts = accounts.filter((a) =>
-        a.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleArchive = async () => {
+        if (!editingId) return;
+
+        if (!confirm('Are you sure you want to archive this analytical account?')) {
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const token = localStorage.getItem('shiv_auth_token');
+            const response = await fetch(`http://localhost:5000/api/analytical-accounts/${editingId}/archive`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to archive analytical account');
+            }
+
+            await fetchAccounts();
+            setView('list');
+            setEditingId(null);
+            reset();
+        } catch (err: any) {
+            setError(err.message || 'Failed to archive analytical account');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Filter accounts based on activeTab and search
+    const filteredAccounts = accounts.filter((account) => {
+        // Filter by active status based on tab
+        const isActive = Number(account.active ?? 1); // Default to active if undefined
+        const activeFilter = activeTab === 'archived' ? isActive === 0 : isActive === 1;
+
+        // Filter by search term
+        const searchFilter = account.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (account.code || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+        return activeFilter && searchFilter;
+    });
 
     if (view === "list") {
         return (
@@ -181,11 +222,17 @@ export const AnalyticalAccounts: React.FC = () => {
                     <Button
                         onClick={handleSubmit(onSubmit)}
                         leftIcon={<Save className="w-4 h-4" />}
+                        disabled={_loading}
                     >
-                        Confirm
+                        {_loading ? 'Saving...' : (editingId ? 'Update' : 'Save')}
                     </Button>
-                    <Button variant="outline" leftIcon={<Archive className="w-4 h-4" />}>
-                        Archived
+                    <Button
+                        variant="outline"
+                        leftIcon={<Archive className="w-4 h-4" />}
+                        onClick={handleArchive}
+                        disabled={_loading || !editingId}
+                    >
+                        Archive
                     </Button>
                 </div>
             </div>

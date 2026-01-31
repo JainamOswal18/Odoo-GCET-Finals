@@ -260,6 +260,16 @@ class BudgetController {
     }
   }
 
+  async archive(req, res, next) {
+    try {
+      const { id } = req.params;
+      await runQuery('UPDATE budgets SET active = 0, updated_at = datetime(\'now\') WHERE id = ?', [id]);
+      res.json({ message: 'Budget archived successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getHistory(req, res, next) {
     try {
       const { id } = req.params;

@@ -69,13 +69,13 @@ export const Budgets: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
-            
+
             if (editingId) {
                 await budgetsApi.update(editingId, data);
             } else {
                 await budgetsApi.create(data);
             }
-            
+
             await fetchData();
             setView("list");
             reset();
@@ -105,9 +105,49 @@ export const Budgets: React.FC = () => {
         setView("form");
     };
 
-    const filteredBudgets = budgets.filter((b) =>
-        b.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleArchive = async () => {
+        if (!editingId) return;
+
+        if (!confirm('Are you sure you want to archive this budget?')) {
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const token = localStorage.getItem('shiv_auth_token');
+            const response = await fetch(`http://localhost:5000/api/budgets/${editingId}/archive`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to archive budget');
+            }
+
+            await fetchData();
+            setView('list');
+            setEditingId(null);
+            reset();
+        } catch (err: any) {
+            setError(err.message || 'Failed to archive budget');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Filter budgets based on activeTab and search
+    const filteredBudgets = budgets.filter((budget) => {
+        // Filter by active status based on tab
+        const isActive = Number(budget.active ?? 1); // Default to active if undefined
+        const activeFilter = activeTab === 'archived' ? isActive === 0 : isActive === 1;
+
+        // Filter by search term
+        const searchFilter = budget.name.toLowerCase().includes(searchTerm.toLowerCase());
+
+        return activeFilter && searchFilter;
+    });
 
     if (view === "list") {
         return (
@@ -128,6 +168,28 @@ export const Budgets: React.FC = () => {
                             {error}
                         </div>
                     )}
+
+                    {/* Tabs for filtering */}
+                    <div className="flex items-center space-x-1 mb-4 border-b border-gray-200">
+                        <button
+                            onClick={() => setActiveTab('new')}
+                            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'new'
+                                    ? 'border-indigo-600 text-indigo-600'
+                                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            Active
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('archived')}
+                            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'archived'
+                                    ? 'border-indigo-600 text-indigo-600'
+                                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            Archived
+                        </button>
+                    </div>
 
                     <div className="flex items-center space-x-4 mb-6">
                         <div className="relative flex-1 max-w-sm">
@@ -154,67 +216,67 @@ export const Budgets: React.FC = () => {
                             No budgets found. Click "New Budget" to create one.
                         </div>
                     ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 text-gray-700 font-medium">
-                                <tr>
-                                    <th className="px-4 py-3 rounded-tl-lg">Budget Name</th>
-                                    <th className="px-4 py-3">Analytical Account</th>
-                                    <th className="px-4 py-3">Period</th>
-                                    <th className="px-4 py-3 text-right">Planned</th>
-                                    <th className="px-4 py-3 text-right">Actual</th>
-                                    <th className="px-4 py-3 text-right">Achievement</th>
-                                    <th className="px-4 py-3 text-right rounded-tr-lg">Remaining</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {filteredBudgets.map((budget) => (
-                                    <tr
-                                        key={budget.id}
-                                        className="hover:bg-gray-50 cursor-pointer transition-colors"
-                                        onClick={() => handleEdit(budget)}
-                                    >
-                                        <td className="px-4 py-3 font-medium text-gray-900">
-                                            {budget.name}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs">
-                                                {budget.analyticalAccountName || "N/A"}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-500 text-xs">
-                                            {new Date(budget.periodStart).toLocaleDateString()} - {new Date(budget.periodEnd).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-4 py-3 text-right text-gray-900 font-medium">
-                                            ₹{(budget.plannedAmount || budget.budgetedAmount || 0).toLocaleString()}
-                                        </td>
-                                        <td className="px-4 py-3 text-right text-gray-600">
-                                            ₹{(budget.actualAmount || 0).toLocaleString()}
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <div className={`px-2 py-1 rounded-full text-xs font-medium ${(Number(budget.achievementPercentage) || 0) >= 80
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-50 text-gray-700 font-medium">
+                                    <tr>
+                                        <th className="px-4 py-3 rounded-tl-lg">Budget Name</th>
+                                        <th className="px-4 py-3">Analytical Account</th>
+                                        <th className="px-4 py-3">Period</th>
+                                        <th className="px-4 py-3 text-right">Planned</th>
+                                        <th className="px-4 py-3 text-right">Actual</th>
+                                        <th className="px-4 py-3 text-right">Achievement</th>
+                                        <th className="px-4 py-3 text-right rounded-tr-lg">Remaining</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {filteredBudgets.map((budget) => (
+                                        <tr
+                                            key={budget.id}
+                                            className="hover:bg-gray-50 cursor-pointer transition-colors"
+                                            onClick={() => handleEdit(budget)}
+                                        >
+                                            <td className="px-4 py-3 font-medium text-gray-900">
+                                                {budget.name}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs">
+                                                    {budget.analyticalAccountName || "N/A"}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-500 text-xs">
+                                                {new Date(budget.periodStart).toLocaleDateString()} - {new Date(budget.periodEnd).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-gray-900 font-medium">
+                                                ₹{(budget.plannedAmount || budget.budgetedAmount || 0).toLocaleString()}
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-gray-600">
+                                                ₹{(budget.actualAmount || 0).toLocaleString()}
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${(Number(budget.achievementPercentage) || 0) >= 80
                                                         ? 'bg-green-100 text-green-700'
                                                         : (Number(budget.achievementPercentage) || 0) >= 50
                                                             ? 'bg-yellow-100 text-yellow-700'
                                                             : 'bg-red-100 text-red-700'
-                                                    }`}>
-                                                    {(Number(budget.achievementPercentage) || 0).toFixed(1)}%
+                                                        }`}>
+                                                        {(Number(budget.achievementPercentage) || 0).toFixed(1)}%
+                                                    </div>
+                                                    {(Number(budget.achievementPercentage) || 0) > 100 && (
+                                                        <AlertCircle className="w-4 h-4 text-red-500" />
+                                                    )}
                                                 </div>
-                                                {(Number(budget.achievementPercentage) || 0) > 100 && (
-                                                    <AlertCircle className="w-4 h-4 text-red-500" />
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className={`px-4 py-3 text-right font-medium ${(Number(budget.remainingBalance) || 0) < 0 ? 'text-red-600' : 'text-emerald-600'
-                                            }`}>
-                                            ₹{(Number(budget.remainingBalance) || 0).toLocaleString()}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                            </td>
+                                            <td className={`px-4 py-3 text-right font-medium ${(Number(budget.remainingBalance) || 0) < 0 ? 'text-red-600' : 'text-emerald-600'
+                                                }`}>
+                                                ₹{(Number(budget.remainingBalance) || 0).toLocaleString()}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </Card>
             </div>
@@ -266,11 +328,17 @@ export const Budgets: React.FC = () => {
                     <Button
                         onClick={handleSubmit(onSubmit)}
                         leftIcon={<Save className="w-4 h-4" />}
+                        disabled={loading}
                     >
-                        Confirm
+                        {loading ? 'Saving...' : (editingId ? 'Update' : 'Save')}
                     </Button>
-                    <Button variant="outline" leftIcon={<Archive className="w-4 h-4" />}>
-                        Archived
+                    <Button
+                        variant="outline"
+                        leftIcon={<Archive className="w-4 h-4" />}
+                        onClick={handleArchive}
+                        disabled={loading || !editingId}
+                    >
+                        Archive
                     </Button>
                 </div>
             </div>
@@ -345,8 +413,8 @@ export const Budgets: React.FC = () => {
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-600">Remaining:</span>
                                     <span className={`font-medium ${(Number(budgets.find(b => b.id === editingId)?.remainingBalance) || 0) < 0
-                                            ? 'text-red-600'
-                                            : 'text-emerald-600'
+                                        ? 'text-red-600'
+                                        : 'text-emerald-600'
                                         }`}>
                                         ₹{(Number(budgets.find(b => b.id === editingId)?.remainingBalance) || 0).toLocaleString()}
                                     </span>

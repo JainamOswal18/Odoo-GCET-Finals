@@ -23,6 +23,6 @@ router.get('/:id', analyticalAccountController.getById);
 
 router.put('/:id', analyticalAccountController.update);
 
-router.delete('/:id/archive', requireAdmin, analyticalAccountController.archive);
+router.patch('/:id/archive', requireAdmin, analyticalAccountController.archive);
 
 export default router;
