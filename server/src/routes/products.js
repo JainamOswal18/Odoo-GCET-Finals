@@ -25,4 +25,6 @@ router.put('/:id', productController.update);
 
 router.patch('/:id/archive', requireAdmin, productController.archive);
 
+router.patch('/:id/unarchive', requireAdmin, productController.unarchive);
+
 export default router;
