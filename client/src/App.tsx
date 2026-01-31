@@ -7,10 +7,26 @@ import { Login, CreateUser, ForgotPassword } from "@/pages/auth";
 
 // Main Pages
 import { Dashboard } from "@/pages/Dashboard";
+
+// Master Data Pages
 import { Contacts } from "@/pages/master/Contacts";
 import { Products } from "@/pages/master/Products";
 import { AnalyticalAccounts } from "@/pages/master/AnalyticalAccounts";
 import { AutoAnalytical } from "@/pages/master/AutoAnalytical";
+import { Budgets } from "@/pages/master/Budgets";
+
+// Transaction Pages
+import { PurchaseOrders } from "@/pages/transactions/PurchaseOrders";
+import { VendorBills } from "@/pages/transactions/VendorBills";
+import { SalesOrders } from "@/pages/transactions/SalesOrders";
+import { CustomerInvoices } from "@/pages/transactions/CustomerInvoices";
+import { Payments } from "@/pages/transactions/Payments";
+
+// Budget Monitoring Pages
+import { BudgetOverview, BudgetVsActuals, RevisionHistory } from "@/pages/budget";
+
+// Portal Pages
+import { PortalDashboard } from "@/pages/portal/PortalDashboard";
 
 // Placeholder components for routes not yet implemented
 const Placeholder = ({ title }: { title: string }) => (
@@ -22,28 +38,12 @@ const Placeholder = ({ title }: { title: string }) => (
   </div>
 );
 
-// Master Data Pages (placeholders for now)
-const Budgets = () => <Placeholder title="Budgets" />;
-
-// Transaction Pages (placeholders for now)
-const PurchaseOrders = () => <Placeholder title="Purchase Orders" />;
-const VendorBills = () => <Placeholder title="Vendor Bills" />;
-const SalesOrders = () => <Placeholder title="Sales Orders" />;
-const CustomerInvoices = () => <Placeholder title="Customer Invoices" />;
-const Payments = () => <Placeholder title="Payments" />;
-
-// Report Pages (placeholders for now)
-const BudgetDashboard = () => <Placeholder title="Budget Dashboard" />;
-const BudgetActuals = () => <Placeholder title="Budget vs Actuals" />;
-const Revisions = () => <Placeholder title="Revision History" />;
-
-// Portal Pages (placeholders for now)
-import { PortalDashboard } from "@/pages/portal/PortalDashboard";
+// Portal placeholders
 const MyInvoices = () => <Placeholder title="My Invoices" />;
 const MyOrders = () => <Placeholder title="My Orders" />;
 const PortalPayments = () => <Placeholder title="Portal Payments" />;
 
-// Settings
+// Settings placeholder
 const Settings = () => <Placeholder title="Settings" />;
 
 function App() {
@@ -53,7 +53,6 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
-          {/* <Route path="/signup" element={<SignUp />} /> */}
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Admin Routes */}
@@ -79,11 +78,11 @@ function App() {
               <Route path="payments" element={<Payments />} />
             </Route>
 
-            {/* Reports */}
-            <Route path="reports">
-              <Route path="budget-dashboard" element={<BudgetDashboard />} />
-              <Route path="budget-actuals" element={<BudgetActuals />} />
-              <Route path="revisions" element={<Revisions />} />
+            {/* Budget Monitoring - matches Sidebar navigation */}
+            <Route path="budget-monitoring">
+              <Route path="overview" element={<BudgetOverview />} />
+              <Route path="budget-vs-actuals" element={<BudgetVsActuals />} />
+              <Route path="revision-history" element={<RevisionHistory />} />
             </Route>
 
             {/* Settings */}

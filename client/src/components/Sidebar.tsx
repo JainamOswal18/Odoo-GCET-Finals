@@ -69,9 +69,9 @@ const navItems: NavItem[] = [
         icon: <BarChart3 className="w-5 h-5" />,
         adminOnly: true,
         children: [
-            { label: "Overview", icon: <PieChart className="w-4 h-4" />, href: "/reports/budget-dashboard" },
-            { label: "Budget vs Actuals", icon: <BarChart3 className="w-4 h-4" />, href: "/reports/budget-actuals" },
-            { label: "Revision History", icon: <FileText className="w-4 h-4" />, href: "/reports/revisions" },
+            { label: "Overview", icon: <PieChart className="w-4 h-4" />, href: "/budget-monitoring/overview" },
+            { label: "Budget vs Actuals", icon: <BarChart3 className="w-4 h-4" />, href: "/budget-monitoring/budget-vs-actuals" },
+            { label: "Revision History", icon: <FileText className="w-4 h-4" />, href: "/budget-monitoring/revision-history" },
         ],
     },
     {

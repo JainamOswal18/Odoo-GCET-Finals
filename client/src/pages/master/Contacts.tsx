@@ -1,12 +1,12 @@
-import React, { useState } from "react";
-import { Plus, Search, Filter, ArrowLeft, Save, Archive, Upload, X, UserPlus, Key } from "lucide-react";
+﻿import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Search, Filter, ArrowLeft, Save, Archive, Upload, X, UserPlus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button, Input, Card, Select, PasswordInput } from "@/components/ui";
+import { Button, Input, Card, Select } from "@/components/ui";
 import { MOCK_CONTACTS } from "@/lib/mock";
 import type { Contact } from "@/lib/types";
-import { useAuth } from "@/contexts/AuthContext";
 
 // Schema matching the wireframe fields
 const contactSchema = z.object({
@@ -30,17 +30,9 @@ export const Contacts: React.FC = () => {
     const [contacts, setContacts] = useState<Contact[]>(MOCK_CONTACTS);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
-
-    // Portal Access Modal State
-    const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
-    const [accessLoading, setAccessLoading] = useState(false);
-    const { createUser } = useAuth();
-
-    const [accessForm, setAccessForm] = useState({
-        loginId: "",
-        password: "",
-        confirmPassword: ""
-    });
+    const [activeTab, setActiveTab] = useState<"new" | "confirm" | "archived">("new");
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const navigate = useNavigate();
 
     // Form setup
     const {
@@ -228,109 +220,51 @@ export const Contacts: React.FC = () => {
     return (
         <div className="space-y-6">
 
-            {/* Grant Access Modal (Simplified Implementation) */}
-            {
-                isAccessModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                        <Card className="w-full max-w-md p-6 bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-3 bg-indigo-100 text-indigo-600 rounded-full">
-                                    <Key className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900">Grant Portal Access</h3>
-                                    <p className="text-sm text-gray-500">Create credentials for {watch("name")}</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <Input
-                                    label="Login ID"
-                                    placeholder="e.g. user_123"
-                                    value={accessForm.loginId}
-                                    onChange={(e) => setAccessForm(prev => ({ ...prev, loginId: e.target.value }))}
-                                />
-                                <PasswordInput
-                                    label="Password"
-                                    placeholder="Min 8 chars"
-                                    value={accessForm.password}
-                                    onChange={(e) => setAccessForm(prev => ({ ...prev, password: e.target.value }))}
-                                />
-                                <PasswordInput
-                                    label="Confirm Password"
-                                    placeholder="Confirm password"
-                                    value={accessForm.confirmPassword}
-                                    onChange={(e) => setAccessForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                                />
-
-                                <div className="p-3 bg-blue-50 text-blue-700 text-xs rounded-lg">
-                                    ℹ️ Credentials will be sent to <strong>{watch("email") || "the registered email"}</strong>.
-                                </div>
-
-                                <div className="flex gap-3 mt-6">
-                                    <Button
-                                        className="flex-1"
-                                        isLoading={accessLoading}
-                                        onClick={async () => {
-                                            if (accessForm.password !== accessForm.confirmPassword) {
-                                                alert("Passwords do not match!");
-                                                return;
-                                            }
-                                            if (!accessForm.loginId || !accessForm.password) {
-                                                alert("Please fill all fields");
-                                                return;
-                                            }
-
-                                            setAccessLoading(true);
-                                            try {
-                                                await createUser({
-                                                    name: watch("name"),
-                                                    email: watch("email") || "",
-                                                    loginId: accessForm.loginId,
-                                                    password: accessForm.password,
-                                                    role: "portal"
-                                                });
-                                                alert(`Success! Credentials sent to ${watch("email")}`);
-                                                setIsAccessModalOpen(false);
-                                                setAccessForm({ loginId: "", password: "", confirmPassword: "" });
-                                            } catch (e) {
-                                                alert(e instanceof Error ? e.message : "Failed to create user");
-                                            } finally {
-                                                setAccessLoading(false);
-                                            }
-                                        }}
-                                    >
-                                        Create & Send
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="flex-1"
-                                        onClick={() => setIsAccessModalOpen(false)}
-                                    >
-                                        Cancel
-                                    </Button>
-                                </div>
-                            </div>
-                        </Card>
-                    </div>
-                )
-            }
-
             {/* Header / Actions */}
-            <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex items-center space-x-4">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setView("list")}
-                        leftIcon={<ArrowLeft className="w-4 h-4" />}
-                    >
-                        Back
-                    </Button>
-                    <h1 className="text-xl font-bold text-gray-900">
-                        {editingId ? "Edit Contact" : "New Contact"}
-                    </h1>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                {/* Top Navigation Bar */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                    <div className="flex items-center space-x-8">
+                        <h1 className="text-xl font-bold text-gray-900">Contact Master</h1>
+                        <span className="text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">Akshat</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>Home</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setView('list')}>Back</Button>
+                    </div>
                 </div>
+
+                {/* Tab Navigation */}
+                <div className="flex items-center space-x-1 px-4 py-2 bg-gray-50">
+                    <button
+                        onClick={() => setActiveTab('new')}
+                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
+                            activeTab === 'new' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                    >
+                        New
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('confirm')}
+                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
+                            activeTab === 'confirm' ? 'bg-pink-100 text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                    >
+                        Confirm
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('archived')}
+                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
+                            activeTab === 'archived' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                    >
+                        Archived
+                    </button>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between p-4">
+                <div></div>
                 <div className="flex items-center space-x-2">
                     <Button
                         variant="secondary"
@@ -340,7 +274,7 @@ export const Contacts: React.FC = () => {
                                 alert("Please enter an email address first.");
                                 return;
                             }
-                            setIsAccessModalOpen(true);
+                            navigate(`/master/create-user?name=${encodeURIComponent(watch("name"))}&email=${encodeURIComponent(watch("email") || "")}`);
                         }}
                     >
                         Grant Portal Access
@@ -358,12 +292,13 @@ export const Contacts: React.FC = () => {
                 </div>
             </div>
 
+  </div>
             {/* Main Form Content */}
             <Card className="p-8">
                 <div className="mb-8">
                     <Input
                         placeholder="e.g. Azure Interior"
-                        className="text-2xl font-semibold border-t-0 border-x-0 border-b-2 rounded-none px-0 focus:ring-0 focus:border-indigo-600 px-2"
+                        className="text-2xl font-semibold border-t-0 border-x-0 border-b-2 rounded-none px-2 focus:ring-0 focus:border-indigo-600"
                         label="Contact Name"
                         error={errors.name?.message}
                         {...register("name")}
@@ -467,16 +402,55 @@ export const Contacts: React.FC = () => {
                     </div>
 
                     {/* Right Column: Image Upload */}
-                    <div className="w-full lg:w-64 flex-shrink-0">
-                        <div className="border-2 border-dashed border-gray-300 rounded-2xl p-6 flex flex-col items-center justify-center text-center h-64 hover:bg-gray-50 transition-colors cursor-pointer group bg-gray-50/50">
-                            <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                <Upload className="w-8 h-8 text-indigo-500" />
-                            </div>
-                            <h3 className="font-semibold text-gray-900 mb-1">Upload Image</h3>
-                            <p className="text-xs text-gray-500">
-                                Drag info here or click to browse
-                            </p>
-                        </div>
+                    <div className="w-full lg:w-80 flex-shrink-0">
+                        <label 
+                            htmlFor="image-upload" 
+                            className="border-2 border-dashed border-pink-400 rounded-2xl p-8 flex flex-col items-center justify-center text-center h-64 hover:bg-pink-50/50 transition-colors cursor-pointer group bg-white"
+                        >
+                            {imagePreview ? (
+                                <div className="relative w-full h-full">
+                                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover rounded-xl" />
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setImagePreview(null);
+                                            setValue('image', '');
+                                        }}
+                                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="w-20 h-20 bg-pink-50 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                        <Upload className="w-10 h-10 text-pink-500" />
+                                    </div>
+                                    <h3 className="font-semibold text-pink-600 mb-1 text-lg">Upload Image</h3>
+                                    <p className="text-sm text-gray-500">
+                                        Drag & drop or click to browse
+                                    </p>
+                                </>
+                            )}
+                        </label>
+                        <input 
+                            id="image-upload" 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                        setImagePreview(reader.result as string);
+                                        setValue('image', reader.result as string);
+                                    };
+                                    reader.readAsDataURL(file);
+                                }
+                            }}
+                        />
                     </div>
                 </div>
             </Card>

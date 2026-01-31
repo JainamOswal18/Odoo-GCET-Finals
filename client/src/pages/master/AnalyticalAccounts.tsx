@@ -20,6 +20,7 @@ export const AnalyticalAccounts: React.FC = () => {
     const [accounts, setAccounts] = useState<AnalyticalAccount[]>(MOCK_ANALYTICAL_ACCOUNTS);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [activeTab, setActiveTab] = useState<"new" | "confirm" | "archived">("confirm");
 
     const {
         register,
@@ -77,62 +78,65 @@ export const AnalyticalAccounts: React.FC = () => {
     if (view === "list") {
         return (
             <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Analytics Master</h1>
-                        <p className="text-gray-500">Manage cost centers and track expenses</p>
+                {/* Header with Navigation */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                        <div className="flex items-center space-x-8">
+                            <h1 className="text-xl font-bold text-gray-900">Analytics Master</h1>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Button variant="ghost" size="sm">Home</Button>
+                            <Button variant="ghost" size="sm">Back</Button>
+                        </div>
                     </div>
-                    <Button onClick={handleNew} leftIcon={<Plus className="w-4 h-4" />}>
-                        New Analytic
-                    </Button>
+
+                    {/* Tab Navigation */}
+                    <div className="flex items-center space-x-1 px-4 py-2 bg-gray-50">
+                        <button
+                            onClick={() => setActiveTab('new')}
+                            className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'new' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            New
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('confirm')}
+                            className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'confirm' ? 'bg-pink-100 text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            Confirm
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('archived')}
+                            className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'archived' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            Archived
+                        </button>
+                    </div>
                 </div>
 
-                <Card className="p-4">
-                    <div className="flex items-center space-x-4 mb-6">
-                        <div className="relative flex-1 max-w-sm">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Search analytics..."
-                                className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        <Button variant="outline" leftIcon={<Filter className="w-4 h-4" />}>
-                            Filters
-                        </Button>
+                <Card className="p-8">
+                    <div className="mb-6">
+                        <h2 className="text-lg font-semibold text-gray-900 mb-2">Analytic Name</h2>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 text-gray-700 font-medium">
-                                <tr>
-                                    <th className="px-4 py-3 rounded-tl-lg">Analytic Name</th>
-                                    <th className="px-4 py-3">Code</th>
-                                    <th className="px-4 py-3 rounded-tr-lg">Description</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {filteredAccounts.map((account) => (
-                                    <tr
-                                        key={account.id}
-                                        className="hover:bg-gray-50 cursor-pointer transition-colors"
-                                        onClick={() => handleEdit(account)}
-                                    >
-                                        <td className="px-4 py-3 font-medium text-gray-900">
-                                            {account.name}
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-500 font-mono text-xs">
-                                            {account.code}
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-500">
-                                            {account.description || "-"}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className="space-y-1">
+                        {filteredAccounts.map((account) => (
+                            <div
+                                key={account.id}
+                                onClick={() => handleEdit(account)}
+                                className="p-4 border-b border-gray-200 hover:bg-pink-50 cursor-pointer transition-colors text-pink-600 font-medium"
+                            >
+                                {account.name}
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="mt-6">
+                        <Button onClick={handleNew} leftIcon={<Plus className="w-4 h-4" />}>
+                            Add Line
+                        </Button>
                     </div>
                 </Card>
             </div>
@@ -173,7 +177,7 @@ export const AnalyticalAccounts: React.FC = () => {
                 <div className="space-y-6">
                     <Input
                         placeholder="e.g. Furniture Expo 2026"
-                        className="text-2xl font-semibold border-t-0 border-x-0 border-b-2 rounded-none px-0 focus:ring-0 focus:border-indigo-600 px-2"
+                        className="text-2xl font-semibold border-t-0 border-x-0 border-b-2 rounded-none px-2 focus:ring-0 focus:border-indigo-600"
                         label="Analytic Name"
                         error={errors.name?.message}
                         {...register("name")}

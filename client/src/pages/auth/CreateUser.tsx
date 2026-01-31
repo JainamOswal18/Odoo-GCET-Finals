@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -37,6 +37,7 @@ type CreateUserFormData = z.infer<typeof createUserSchema>;
 
 export const CreateUser: React.FC = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { createUser, user } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -51,6 +52,11 @@ export const CreateUser: React.FC = () => {
         formState: { errors },
     } = useForm<CreateUserFormData>({
         resolver: zodResolver(createUserSchema),
+        defaultValues: {
+            name: searchParams.get("name") || "",
+            email: searchParams.get("email") || "",
+            role: "portal", // Default to portal
+        }
     });
 
     const selectedRole = watch("role");
@@ -70,6 +76,9 @@ export const CreateUser: React.FC = () => {
             setSuccess(true);
             reset();
             setTimeout(() => setSuccess(false), 3000);
+
+            // If coming from contacts, maybe offer to go back?
+            // For now, just stay here.
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to create user. Please try again.");
         } finally {

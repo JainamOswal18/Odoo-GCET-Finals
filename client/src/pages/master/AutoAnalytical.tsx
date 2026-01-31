@@ -25,6 +25,8 @@ export const AutoAnalytical: React.FC = () => {
     const [models, setModels] = useState<AutoAnalyticalModel[]>(MOCK_AUTO_ANALYTICAL_MODELS);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [activeTab, setActiveTab] = useState<"new" | "confirm" | "archived">("confirm");
+    const [status, setStatus] = useState<"draft" | "confirm" | "cancelled">("draft");
 
     const {
         register,
@@ -171,21 +173,65 @@ export const AutoAnalytical: React.FC = () => {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex items-center space-x-4">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setView("list")}
-                        leftIcon={<ArrowLeft className="w-4 h-4" />}
-                    >
-                        Back
-                    </Button>
-                    <h1 className="text-xl font-bold text-gray-900">
-                        {editingId ? "Edit Model" : "New Model"}
-                    </h1>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                {/* Top Navigation Bar */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                    <div className="flex items-center space-x-8">
+                        <h1 className="text-xl font-bold text-gray-900">Auto Analytical Model</h1>
+                        <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">Dependable System</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className={status === 'draft' ? 'bg-gray-100' : ''}
+                        >
+                            Draft
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className={status === 'confirm' ? 'bg-pink-100' : ''}
+                        >
+                            Confirm
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className={status === 'cancelled' ? 'bg-gray-100' : ''}
+                        >
+                            Cancelled
+                        </Button>
+                    </div>
                 </div>
-                <div className="flex items-center space-x-2">
+
+                {/* Tab Navigation */}
+                <div className="flex items-center space-x-1 px-4 py-2 bg-gray-50">
+                    <button
+                        onClick={() => setActiveTab('new')}
+                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'new' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                    >
+                        New
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('confirm')}
+                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'confirm' ? 'bg-pink-100 text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                    >
+                        Confirm
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('archived')}
+                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'archived' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                    >
+                        Archived
+                    </button>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end p-4 space-x-2">
                     <Button
                         onClick={handleSubmit(onSubmit)}
                         leftIcon={<Save className="w-4 h-4" />}
@@ -202,7 +248,7 @@ export const AutoAnalytical: React.FC = () => {
                 <div className="mb-8">
                     <Input
                         placeholder="e.g. Office Expenses Rule"
-                        className="text-2xl font-semibold border-t-0 border-x-0 border-b-2 rounded-none px-0 focus:ring-0 focus:border-indigo-600 px-2"
+                        className="text-2xl font-semibold border-t-0 border-x-0 border-b-2 rounded-none px-2 focus:ring-0 focus:border-indigo-600"
                         label="Model Name"
                         error={errors.name?.message}
                         {...register("name")}
