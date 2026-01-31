@@ -34,7 +34,7 @@ interface CustomerInvoice {
     customerName: string;
     invoiceDate: string;
     dueDate?: string;
-    status: "draft" | "confirmed" | "cancelled";
+    status: "draft" | "confirmed" | "done" | "cancelled";
     paymentStatus: PaymentStatus;
     lineItems: Array<{
         id: string;
@@ -106,7 +106,7 @@ export const CustomerInvoices: React.FC = () => {
     const [invoices, setInvoices] = useState<CustomerInvoice[]>(MOCK_INVOICES);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
-    const [status, setStatus] = useState<"draft" | "confirmed" | "cancelled">("draft");
+    const [status, setStatus] = useState<"draft" | "confirmed" | "done" | "cancelled">("draft");
     const [showBudgetWarning, setShowBudgetWarning] = useState(false);
 
     const {
@@ -116,6 +116,7 @@ export const CustomerInvoices: React.FC = () => {
         reset,
         setValue,
         watch,
+        trigger,
         formState: { errors },
     } = useForm<InvoiceFormData>({
         resolver: zodResolver(invoiceSchema),
@@ -142,11 +143,6 @@ export const CustomerInvoices: React.FC = () => {
         return sum + calculateLineTotal(item.quantity || 0, item.unitPrice || 0);
     }, 0) || 0;
 
-    const calculatePaymentStatus = (amountPaid: number, grandTotal: number): PaymentStatus => {
-        if (amountPaid === 0) return "unpaid";
-        if (amountPaid >= grandTotal) return "paid";
-        return "partial";
-    };
 
     const handleNew = () => {
         setView("form");
@@ -266,8 +262,9 @@ export const CustomerInvoices: React.FC = () => {
     };
 
     const handleConfirm = async () => {
-        const isValid = await handleSubmit(onSubmit)();
-        if (isValid !== false) {
+        const valid = await trigger();
+        if (valid) {
+            await handleSubmit(onSubmit)();
             setStatus("confirmed");
             setShowBudgetWarning(true);
         }
@@ -361,10 +358,10 @@ export const CustomerInvoices: React.FC = () => {
                                         <td className="px-4 py-3">
                                             <span
                                                 className={`px-2 py-1 rounded-full text-xs font-medium ${invoice.paymentStatus === "paid"
-                                                        ? "bg-green-100 text-green-700"
-                                                        : invoice.paymentStatus === "partial"
-                                                            ? "bg-yellow-100 text-yellow-700"
-                                                            : "bg-red-100 text-red-700"
+                                                    ? "bg-green-100 text-green-700"
+                                                    : invoice.paymentStatus === "partial"
+                                                        ? "bg-yellow-100 text-yellow-700"
+                                                        : "bg-red-100 text-red-700"
                                                     }`}
                                             >
                                                 {invoice.paymentStatus === "paid" ? "Paid" :
@@ -486,7 +483,8 @@ export const CustomerInvoices: React.FC = () => {
                                                 value: c.id,
                                                 label: c.name
                                             }))}
-                                            {...register("customerId")}
+                                            value={watch("customerId")}
+                                            onValueChange={(val) => setValue("customerId", val)}
                                         />
                                         <p className="text-xs text-gray-500 mt-1">
                                             (from Contact Master - Many to one)
@@ -595,8 +593,8 @@ export const CustomerInvoices: React.FC = () => {
                                     <div className="text-right border-t-2 border-gray-300 pt-2">
                                         <p className="text-sm text-gray-600">Amount Due</p>
                                         <p className={`text-xl font-bold ${invoices.find(i => i.id === editingId)?.amountDue === 0
-                                                ? 'text-green-600'
-                                                : 'text-red-600'
+                                            ? 'text-green-600'
+                                            : 'text-red-600'
                                             }`}>
                                             ₹{invoices.find(i => i.id === editingId)?.amountDue.toLocaleString()}
                                         </p>

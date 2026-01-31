@@ -112,7 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // ============================================================================
     // SIGNUP (Public signup is disabled - only admin can create users)
     // ============================================================================
-    const signup = useCallback(async (data: SignupData) => {
+    const signup = useCallback(async (_data: SignupData) => {
         setState((prev) => ({ ...prev, isLoading: true }));
 
         try {

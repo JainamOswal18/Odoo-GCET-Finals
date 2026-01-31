@@ -3,16 +3,16 @@ import { Plus, Search, Filter, Home, ArrowLeft, Save } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button, Input, Card, Select, Badge } from "@/components/ui";
+import { Button, Card, Select, Badge } from "@/components/ui";
 import { MOCK_CONTACTS } from "@/lib/mock";
 
 const paymentSchema = z.object({
-    paymentType: z.enum(["send", "receive"], { required_error: "Payment type is required" }),
+    paymentType: z.enum(["send", "receive"], { message: "Payment type is required" }),
     partnerId: z.string().min(1, "Partner is required"),
     amount: z.number().min(0.01, "Amount must be greater than 0"),
     paymentDate: z.string().min(1, "Payment date is required"),
-    paymentMethod: z.enum(["cash", "bank", "upi", "razorpay", "cheque"], { required_error: "Payment method is required" }),
-    referenceType: z.enum(["invoice", "bill"], { required_error: "Reference type is required" }),
+    paymentMethod: z.enum(["cash", "bank", "upi", "razorpay", "cheque"], { message: "Payment method is required" }),
+    referenceType: z.enum(["invoice", "bill"], { message: "Reference type is required" }),
     referenceId: z.string().min(1, "Reference invoice/bill is required"),
     notes: z.string().optional(),
 });
@@ -91,7 +91,6 @@ export const Payments: React.FC = () => {
         },
     });
 
-    const watchPaymentType = watch("paymentType");
     const watchReferenceType = watch("referenceType");
     const watchReferenceId = watch("referenceId");
 
@@ -151,7 +150,7 @@ export const Payments: React.FC = () => {
     const onSubmit = (data: PaymentFormData) => {
         const partner = MOCK_CONTACTS.find(c => c.id === data.partnerId);
         let referenceNumber = "";
-        
+
         if (data.referenceType === "invoice") {
             const invoice = MOCK_INVOICE_REFERENCES.find(i => i.id === data.referenceId);
             referenceNumber = invoice?.number || "";
@@ -159,9 +158,9 @@ export const Payments: React.FC = () => {
             const bill = MOCK_BILL_REFERENCES.find(b => b.id === data.referenceId);
             referenceNumber = bill?.number || "";
         }
-        
+
         if (editingId) {
-            setPayments(payments.map(payment => 
+            setPayments(payments.map(payment =>
                 payment.id === editingId
                     ? {
                         ...payment,
@@ -200,7 +199,7 @@ export const Payments: React.FC = () => {
             };
             setPayments([...payments, newPayment]);
         }
-        
+
         // TODO: Update the invoice/bill payment status and amounts
         // This would be handled by the backend in a real application
         if (status === "confirmed") {
@@ -209,7 +208,7 @@ export const Payments: React.FC = () => {
             // Update invoice.amountDue = invoice.grandTotal - invoice.amountPaid
             // Update invoice.paymentStatus based on amountDue
         }
-        
+
         setView("list");
     };
 
@@ -283,11 +282,10 @@ export const Payments: React.FC = () => {
                                         </td>
                                         <td className="px-4 py-3">
                                             <span
-                                                className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                    payment.paymentType === "receive"
-                                                        ? "bg-green-100 text-green-700"
-                                                        : "bg-blue-100 text-blue-700"
-                                                }`}
+                                                className={`px-2 py-1 rounded-full text-xs font-medium ${payment.paymentType === "receive"
+                                                    ? "bg-green-100 text-green-700"
+                                                    : "bg-blue-100 text-blue-700"
+                                                    }`}
                                             >
                                                 {payment.paymentType === "receive" ? "Receive" : "Send"}
                                             </span>
@@ -307,13 +305,12 @@ export const Payments: React.FC = () => {
                                         </td>
                                         <td className="px-4 py-3">
                                             <span
-                                                className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                    payment.status === "confirmed"
-                                                        ? "bg-green-100 text-green-700"
-                                                        : payment.status === "draft"
+                                                className={`px-2 py-1 rounded-full text-xs font-medium ${payment.status === "confirmed"
+                                                    ? "bg-green-100 text-green-700"
+                                                    : payment.status === "draft"
                                                         ? "bg-gray-100 text-gray-700"
                                                         : "bg-red-100 text-red-700"
-                                                }`}
+                                                    }`}
                                             >
                                                 {payment.status}
                                             </span>
@@ -365,7 +362,7 @@ export const Payments: React.FC = () => {
                                     </label>
                                     <input
                                         type="text"
-                                        value={editingId ? 
+                                        value={editingId ?
                                             payments.find(p => p.id === editingId)?.paymentNumber :
                                             `PAY/25/${String(payments.length + 1).padStart(4, '0')}`
                                         }
@@ -415,7 +412,8 @@ export const Payments: React.FC = () => {
                                             { value: "invoice", label: "Customer Invoice" },
                                             { value: "bill", label: "Vendor Bill" },
                                         ]}
-                                        {...register("referenceType")}
+                                        value={watch("referenceType")}
+                                        onValueChange={(val) => setValue("referenceType", val as "invoice" | "bill")}
                                     />
                                     {errors.referenceType && (
                                         <p className="text-xs text-red-600 mt-1">{errors.referenceType.message}</p>
@@ -438,7 +436,8 @@ export const Payments: React.FC = () => {
                                                     label: `${b.number} - ${b.vendor} (Due: ₹${b.amountDue.toLocaleString()})`
                                                 }))
                                         }
-                                        {...register("referenceId")}
+                                        value={watch("referenceId")}
+                                        onValueChange={(val) => setValue("referenceId", val)}
                                     />
                                     <p className="text-xs text-gray-500 mt-1">
                                         Select the invoice or bill this payment is for
@@ -457,7 +456,8 @@ export const Payments: React.FC = () => {
                                             value: c.id,
                                             label: c.name
                                         }))}
-                                        {...register("partnerId")}
+                                        value={watch("partnerId")}
+                                        onValueChange={(val) => setValue("partnerId", val)}
                                         disabled
                                     />
                                     <p className="text-xs text-gray-500 mt-1">
@@ -515,7 +515,8 @@ export const Payments: React.FC = () => {
                                             { value: "razorpay", label: "Razorpay" },
                                             { value: "cheque", label: "Cheque" },
                                         ]}
-                                        {...register("paymentMethod")}
+                                        value={watch("paymentMethod")}
+                                        onValueChange={(val) => setValue("paymentMethod", val as "cash" | "bank" | "upi" | "razorpay" | "cheque")}
                                     />
                                     {errors.paymentMethod && (
                                         <p className="text-xs text-red-600 mt-1">{errors.paymentMethod.message}</p>

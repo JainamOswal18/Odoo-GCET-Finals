@@ -1,7 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-type BadgeVariant = "success" | "warning" | "error" | "info" | "neutral" | "primary";
+type BadgeVariant = "success" | "warning" | "error" | "info" | "neutral" | "primary" | "default" | "danger";
 type BadgeSize = "sm" | "md" | "lg";
 
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -25,6 +25,8 @@ export const Badge: React.FC<BadgeProps> = ({
         info: "bg-blue-50 text-blue-700 border-blue-200",
         neutral: "bg-gray-100 text-gray-700 border-gray-200",
         primary: "bg-indigo-50 text-indigo-700 border-indigo-200",
+        default: "bg-gray-100 text-gray-700 border-gray-200",
+        danger: "bg-red-50 text-red-700 border-red-200",
     };
 
     const dotColors: Record<BadgeVariant, string> = {
@@ -34,6 +36,8 @@ export const Badge: React.FC<BadgeProps> = ({
         info: "bg-blue-500",
         neutral: "bg-gray-500",
         primary: "bg-indigo-500",
+        default: "bg-gray-500",
+        danger: "bg-red-500",
     };
 
     const sizes: Record<BadgeSize, string> = {

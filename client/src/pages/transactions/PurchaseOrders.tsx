@@ -61,7 +61,7 @@ export const PurchaseOrders: React.FC = () => {
     const [orders, setOrders] = useState<PurchaseOrder[]>(MOCK_POS);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
-    const [status, setStatus] = useState<"draft" | "confirmed" | "cancelled">("draft");
+    const [status, setStatus] = useState<"draft" | "confirmed" | "done" | "cancelled">("draft");
     const [showBudgetWarning, setShowBudgetWarning] = useState(false);
 
     const {
@@ -133,7 +133,7 @@ export const PurchaseOrders: React.FC = () => {
                         ? {
                             ...o,
                             ...data,
-                            vendorName: vendor?.name,
+                            vendorName: vendor?.name || o.vendorName,
                             lineItems: processedLineItems,
                             subtotal,
                             taxTotal,
@@ -287,10 +287,10 @@ export const PurchaseOrders: React.FC = () => {
                                         <td className="px-4 py-3">
                                             <span
                                                 className={`px-2 py-1 rounded-full text-xs font-medium ${po.status === "confirmed"
-                                                        ? "bg-green-100 text-green-700"
-                                                        : po.status === "draft"
-                                                            ? "bg-gray-100 text-gray-700"
-                                                            : "bg-red-100 text-red-700"
+                                                    ? "bg-green-100 text-green-700"
+                                                    : po.status === "draft"
+                                                        ? "bg-gray-100 text-gray-700"
+                                                        : "bg-red-100 text-red-700"
                                                     }`}
                                             >
                                                 {po.status}
@@ -466,7 +466,6 @@ export const PurchaseOrders: React.FC = () => {
                         </thead>
                         <tbody>
                             {fields.map((field, index) => {
-                                const product = MOCK_PRODUCTS.find(p => p.id === watchLineItems[index]?.productId);
                                 const total = calculateLineTotal(
                                     watchLineItems[index]?.quantity || 0,
                                     watchLineItems[index]?.unitPrice || 0

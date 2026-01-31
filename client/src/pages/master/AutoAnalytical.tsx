@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, Search, Filter, ArrowLeft, Save, Archive, Settings2 } from "lucide-react";
+import { Plus, Search, Filter, Save, Archive, Settings2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -26,7 +26,7 @@ export const AutoAnalytical: React.FC = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState<"new" | "confirm" | "archived">("confirm");
-    const [status, setStatus] = useState<"draft" | "confirm" | "cancelled">("draft");
+    const [status] = useState<"draft" | "confirm" | "cancelled">("draft");
 
     const {
         register,

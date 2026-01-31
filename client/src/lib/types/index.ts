@@ -157,6 +157,7 @@ export interface PurchaseOrder {
 export interface VendorBill {
     id: string;
     billNumber: string;
+    billReference?: string;
     vendorId: string;
     vendorName: string;
     purchaseOrderId?: string;

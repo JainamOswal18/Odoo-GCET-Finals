@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, Search, Filter, ArrowLeft, Save, Archive } from "lucide-react";
+import { Plus, ArrowLeft, Save, Archive } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,7 +19,7 @@ export const AnalyticalAccounts: React.FC = () => {
     const [view, setView] = useState<"list" | "form">("list");
     const [accounts, setAccounts] = useState<AnalyticalAccount[]>(MOCK_ANALYTICAL_ACCOUNTS);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [searchTerm, setSearchTerm] = useState("");
+    const [searchTerm] = useState("");
     const [activeTab, setActiveTab] = useState<"new" | "confirm" | "archived">("confirm");
 
     const {

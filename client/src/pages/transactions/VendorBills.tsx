@@ -68,7 +68,7 @@ export const VendorBills: React.FC = () => {
     const [bills, setBills] = useState<VendorBill[]>(MOCK_BILLS);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
-    const [status, setStatus] = useState<"draft" | "confirmed" | "cancelled">("draft");
+    const [status, setStatus] = useState<"draft" | "confirmed" | "done" | "cancelled">("draft");
     const [showBudgetWarning, setShowBudgetWarning] = useState(false);
 
     const {
@@ -88,7 +88,7 @@ export const VendorBills: React.FC = () => {
         },
     });
 
-    const { fields, append, remove } = useFieldArray({
+    const { fields, append, remove: _remove } = useFieldArray({
         control,
         name: "lineItems",
     });
@@ -147,7 +147,7 @@ export const VendorBills: React.FC = () => {
                         ? {
                             ...b,
                             ...data,
-                            vendorName: vendor?.name,
+                            vendorName: vendor?.name || b.vendorName,
                             lineItems: processedLineItems,
                             subtotal,
                             taxTotal,
@@ -319,10 +319,10 @@ export const VendorBills: React.FC = () => {
                                         <td className="px-4 py-3">
                                             <span
                                                 className={`px-2 py-1 rounded-full text-xs font-medium ${bill.paymentStatus === "paid"
-                                                        ? "bg-green-100 text-green-700"
-                                                        : bill.paymentStatus === "partial"
-                                                            ? "bg-yellow-100 text-yellow-700"
-                                                            : "bg-red-100 text-red-700"
+                                                    ? "bg-green-100 text-green-700"
+                                                    : bill.paymentStatus === "partial"
+                                                        ? "bg-yellow-100 text-yellow-700"
+                                                        : "bg-red-100 text-red-700"
                                                     }`}
                                             >
                                                 {bill.paymentStatus === "paid" ? "Paid" : bill.paymentStatus === "partial" ? "Partial" : "Not Paid"}

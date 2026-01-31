@@ -1,6 +1,6 @@
 ﻿import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Filter, ArrowLeft, Save, Archive, Upload, X, UserPlus } from "lucide-react";
+import { Plus, Search, Filter, Save, Archive, Upload, X, UserPlus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -238,25 +238,22 @@ export const Contacts: React.FC = () => {
                 <div className="flex items-center space-x-1 px-4 py-2 bg-gray-50">
                     <button
                         onClick={() => setActiveTab('new')}
-                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
-                            activeTab === 'new' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                        }`}
+                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'new' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                            }`}
                     >
                         New
                     </button>
                     <button
                         onClick={() => setActiveTab('confirm')}
-                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
-                            activeTab === 'confirm' ? 'bg-pink-100 text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                        }`}
+                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'confirm' ? 'bg-pink-100 text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                            }`}
                     >
                         Confirm
                     </button>
                     <button
                         onClick={() => setActiveTab('archived')}
-                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
-                            activeTab === 'archived' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                        }`}
+                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'archived' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                            }`}
                     >
                         Archived
                     </button>
@@ -264,35 +261,35 @@ export const Contacts: React.FC = () => {
 
                 {/* Action Buttons */}
                 <div className="flex items-center justify-between p-4">
-                <div></div>
-                <div className="flex items-center space-x-2">
-                    <Button
-                        variant="secondary"
-                        leftIcon={<UserPlus className="w-4 h-4" />}
-                        onClick={() => {
-                            if (!watch("email")) {
-                                alert("Please enter an email address first.");
-                                return;
-                            }
-                            navigate(`/master/create-user?name=${encodeURIComponent(watch("name"))}&email=${encodeURIComponent(watch("email") || "")}`);
-                        }}
-                    >
-                        Grant Portal Access
-                    </Button>
-                    <div className="h-6 w-px bg-gray-300 mx-2" />
-                    <Button
-                        onClick={handleSubmit(onSubmit)}
-                        leftIcon={<Save className="w-4 h-4" />}
-                    >
-                        Confirm
-                    </Button>
-                    <Button variant="outline" leftIcon={<Archive className="w-4 h-4" />}>
-                        Archived
-                    </Button>
+                    <div></div>
+                    <div className="flex items-center space-x-2">
+                        <Button
+                            variant="secondary"
+                            leftIcon={<UserPlus className="w-4 h-4" />}
+                            onClick={() => {
+                                if (!watch("email")) {
+                                    alert("Please enter an email address first.");
+                                    return;
+                                }
+                                navigate(`/master/create-user?name=${encodeURIComponent(watch("name"))}&email=${encodeURIComponent(watch("email") || "")}`);
+                            }}
+                        >
+                            Grant Portal Access
+                        </Button>
+                        <div className="h-6 w-px bg-gray-300 mx-2" />
+                        <Button
+                            onClick={handleSubmit(onSubmit)}
+                            leftIcon={<Save className="w-4 h-4" />}
+                        >
+                            Confirm
+                        </Button>
+                        <Button variant="outline" leftIcon={<Archive className="w-4 h-4" />}>
+                            Archived
+                        </Button>
+                    </div>
                 </div>
-            </div>
 
-  </div>
+            </div>
             {/* Main Form Content */}
             <Card className="p-8">
                 <div className="mb-8">
@@ -403,8 +400,8 @@ export const Contacts: React.FC = () => {
 
                     {/* Right Column: Image Upload */}
                     <div className="w-full lg:w-80 flex-shrink-0">
-                        <label 
-                            htmlFor="image-upload" 
+                        <label
+                            htmlFor="image-upload"
                             className="border-2 border-dashed border-pink-400 rounded-2xl p-8 flex flex-col items-center justify-center text-center h-64 hover:bg-pink-50/50 transition-colors cursor-pointer group bg-white"
                         >
                             {imagePreview ? (
@@ -434,10 +431,10 @@ export const Contacts: React.FC = () => {
                                 </>
                             )}
                         </label>
-                        <input 
-                            id="image-upload" 
-                            type="file" 
-                            accept="image/*" 
+                        <input
+                            id="image-upload"
+                            type="file"
+                            accept="image/*"
                             className="hidden"
                             onChange={(e) => {
                                 const file = e.target.files?.[0];

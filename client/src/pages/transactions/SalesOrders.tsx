@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, Search, Filter, Save, FileText } from "lucide-react";
+import { Plus, Save, FileText } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,9 +29,7 @@ const MOCK_SOS: SalesOrder[] = [];
 export const SalesOrders: React.FC = () => {
     const [view, setView] = useState<"list" | "form">("list");
     const [orders, setOrders] = useState<SalesOrder[]>(MOCK_SOS);
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [status, setStatus] = useState<"draft" | "confirmed" | "cancelled">("draft");
+    const [status, setStatus] = useState<"draft" | "confirmed" | "done" | "cancelled">("draft");
 
     const {
         register,
