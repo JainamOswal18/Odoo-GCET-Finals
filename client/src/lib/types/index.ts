@@ -48,17 +48,24 @@ export interface Contact {
 export interface Product {
     id: string;
     name: string;
-    sku: string;
+    sku?: string;
+    internalReference?: string; // From internal_reference in DB
     category: string;
     description?: string;
-    salesPrice: number; // unitPrice
-    purchasePrice: number; // costPrice
+    salesPrice?: number; // Frontend field name
+    salePrice?: number; // API returns this from sale_price
+    purchasePrice?: number; // Frontend field name
+    costPrice?: number; // API returns this from cost_price
+    productType?: string;
+    unitOfMeasure?: string;
     image?: string;
-    unit: string;
-    taxRate: number;
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
+    imageUrl?: string;
+    unit?: string;
+    taxRate?: number;
+    isActive?: boolean;
+    active?: boolean;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 // Analytical Account (Cost Center) Types
@@ -77,18 +84,23 @@ export interface AnalyticalAccount {
 export interface Budget {
     id: string;
     name: string;
-    analyticalAccountId: string;
+    analyticalAccountId?: string;
     analyticalAccountName?: string;
     periodStart: string;
     periodEnd: string;
-    plannedAmount: number;
-    actualAmount: number;
-    achievementPercentage: number;
-    remainingBalance: number;
-    revisions: BudgetRevision[];
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
+    plannedAmount?: number; // Frontend field
+    budgetedAmount?: number; // API returns this from budgeted_amount
+    actualAmount?: number;
+    theoreticalAmount?: number;
+    achievementPercentage?: number;
+    remainingBalance?: number;
+    variance?: number;
+    status?: string;
+    revisions?: BudgetRevision[];
+    isActive?: boolean;
+    active?: boolean;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface BudgetRevision {

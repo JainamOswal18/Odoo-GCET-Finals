@@ -24,8 +24,8 @@ export const Budgets: React.FC = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState<"new" | "confirm" | "archived">("new");
-    const [_loading, setLoading] = useState(false);
-    const [_error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchData();
@@ -39,9 +39,12 @@ export const Budgets: React.FC = () => {
                 budgetsApi.getAll(),
                 analyticalAccountsApi.getAll()
             ]);
+            console.log('Budgets fetched:', budgetsData);
+            console.log('Analytical accounts fetched:', accountsData);
             setBudgets(budgetsData);
             setAnalyticalAccounts(accountsData);
         } catch (err: any) {
+            console.error('Error fetching data:', err);
             setError(err.message || 'Failed to fetch data');
         } finally {
             setLoading(false);
@@ -120,6 +123,12 @@ export const Budgets: React.FC = () => {
                 </div>
 
                 <Card className="p-4">
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                            {error}
+                        </div>
+                    )}
+
                     <div className="flex items-center space-x-4 mb-6">
                         <div className="relative flex-1 max-w-sm">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -136,6 +145,15 @@ export const Budgets: React.FC = () => {
                         </Button>
                     </div>
 
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="text-gray-500">Loading budgets...</div>
+                        </div>
+                    ) : filteredBudgets.length === 0 ? (
+                        <div className="text-center py-12 text-gray-500">
+                            No budgets found. Click "New Budget" to create one.
+                        </div>
+                    ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-gray-50 text-gray-700 font-medium">
@@ -168,35 +186,36 @@ export const Budgets: React.FC = () => {
                                             {new Date(budget.periodStart).toLocaleDateString()} - {new Date(budget.periodEnd).toLocaleDateString()}
                                         </td>
                                         <td className="px-4 py-3 text-right text-gray-900 font-medium">
-                                            ₹{budget.plannedAmount.toLocaleString()}
+                                            ₹{(budget.plannedAmount || budget.budgetedAmount || 0).toLocaleString()}
                                         </td>
                                         <td className="px-4 py-3 text-right text-gray-600">
-                                            ₹{budget.actualAmount.toLocaleString()}
+                                            ₹{(budget.actualAmount || 0).toLocaleString()}
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <div className={`px-2 py-1 rounded-full text-xs font-medium ${budget.achievementPercentage >= 80
+                                                <div className={`px-2 py-1 rounded-full text-xs font-medium ${(Number(budget.achievementPercentage) || 0) >= 80
                                                         ? 'bg-green-100 text-green-700'
-                                                        : budget.achievementPercentage >= 50
+                                                        : (Number(budget.achievementPercentage) || 0) >= 50
                                                             ? 'bg-yellow-100 text-yellow-700'
                                                             : 'bg-red-100 text-red-700'
                                                     }`}>
-                                                    {budget.achievementPercentage.toFixed(1)}%
+                                                    {(Number(budget.achievementPercentage) || 0).toFixed(1)}%
                                                 </div>
-                                                {budget.achievementPercentage > 100 && (
+                                                {(Number(budget.achievementPercentage) || 0) > 100 && (
                                                     <AlertCircle className="w-4 h-4 text-red-500" />
                                                 )}
                                             </div>
                                         </td>
-                                        <td className={`px-4 py-3 text-right font-medium ${budget.remainingBalance < 0 ? 'text-red-600' : 'text-emerald-600'
+                                        <td className={`px-4 py-3 text-right font-medium ${(Number(budget.remainingBalance) || 0) < 0 ? 'text-red-600' : 'text-emerald-600'
                                             }`}>
-                                            ₹{budget.remainingBalance.toLocaleString()}
+                                            ₹{(Number(budget.remainingBalance) || 0).toLocaleString()}
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
+                    )}
                 </Card>
             </div>
         );
@@ -314,22 +333,22 @@ export const Budgets: React.FC = () => {
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-600">Actual Amount:</span>
                                     <span className="font-medium text-gray-900">
-                                        ₹{budgets.find(b => b.id === editingId)?.actualAmount.toLocaleString() || 0}
+                                        ₹{(Number(budgets.find(b => b.id === editingId)?.actualAmount) || 0).toLocaleString()}
                                     </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-600">Achievement:</span>
                                     <span className="font-medium text-indigo-600">
-                                        {budgets.find(b => b.id === editingId)?.achievementPercentage.toFixed(1) || 0}%
+                                        {(Number(budgets.find(b => b.id === editingId)?.achievementPercentage) || 0).toFixed(1)}%
                                     </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-600">Remaining:</span>
-                                    <span className={`font-medium ${(budgets.find(b => b.id === editingId)?.remainingBalance || 0) < 0
+                                    <span className={`font-medium ${(Number(budgets.find(b => b.id === editingId)?.remainingBalance) || 0) < 0
                                             ? 'text-red-600'
                                             : 'text-emerald-600'
                                         }`}>
-                                        ₹{budgets.find(b => b.id === editingId)?.remainingBalance.toLocaleString() || 0}
+                                        ₹{(Number(budgets.find(b => b.id === editingId)?.remainingBalance) || 0).toLocaleString()}
                                     </span>
                                 </div>
                             </div>
