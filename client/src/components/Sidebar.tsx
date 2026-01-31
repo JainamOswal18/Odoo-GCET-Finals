@@ -117,12 +117,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             {/* Sidebar */}
             <aside
                 className={cn(
-                    "fixed top-0 left-0 z-50 h-screen w-64 bg-white border-r border-gray-100 transition-transform duration-300 lg:translate-x-0",
+                    "fixed top-0 left-0 z-50 h-screen w-64 bg-white border-r border-gray-100 transition-transform duration-300 lg:translate-x-0 flex flex-col",
                     isOpen ? "translate-x-0" : "-translate-x-full"
                 )}
             >
                 {/* Logo */}
-                <div className="flex items-center justify-between h-16 px-4 border-b border-gray-100">
+                <div className="flex items-center justify-between h-16 px-4 border-b border-gray-100 flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
                             <span className="text-white font-bold text-lg">S</span>
@@ -213,7 +213,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 </nav>
 
                 {/* User Info */}
-                <div className="p-4 border-t border-gray-100">
+                <div className="p-4 border-t border-gray-100 flex-shrink-0">
                     <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white font-medium">
                             {user?.name?.charAt(0) || "U"}

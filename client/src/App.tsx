@@ -27,6 +27,11 @@ import { BudgetOverview, BudgetVsActuals, RevisionHistory } from "@/pages/budget
 
 // Portal Pages
 import { PortalDashboard } from "@/pages/portal/PortalDashboard";
+import { MyInvoices } from "@/pages/portal/MyInvoices";
+import { InvoiceDetail } from "@/pages/portal/InvoiceDetail";
+import { MyOrders } from "@/pages/portal/MyOrders";
+
+import { PortalPayments } from "@/pages/portal/PortalPayments";
 
 // Placeholder components for routes not yet implemented
 const Placeholder = ({ title }: { title: string }) => (
@@ -37,11 +42,6 @@ const Placeholder = ({ title }: { title: string }) => (
     </div>
   </div>
 );
-
-// Portal placeholders
-const MyInvoices = () => <Placeholder title="My Invoices" />;
-const MyOrders = () => <Placeholder title="My Orders" />;
-const PortalPayments = () => <Placeholder title="Portal Payments" />;
 
 // Settings placeholder
 const Settings = () => <Placeholder title="Settings" />;
@@ -94,8 +94,10 @@ function App() {
 
           {/* Portal Routes */}
           <Route path="/portal" element={<PortalLayout />}>
-            <Route index element={<PortalDashboard />} />
+            <Route index element={<Navigate to="/portal/dashboard" replace />} />
+            <Route path="dashboard" element={<PortalDashboard />} />
             <Route path="invoices" element={<MyInvoices />} />
+            <Route path="invoices/:id" element={<InvoiceDetail />} />
             <Route path="orders" element={<MyOrders />} />
             <Route path="payments" element={<PortalPayments />} />
           </Route>

@@ -264,3 +264,97 @@ export interface PaginatedResponse<T> {
     pageSize: number;
     totalPages: number;
 }
+
+// Portal-Specific Types
+export type PaymentMethodType = "upi" | "card" | "netbanking" | "emi" | "paylater" | "wallet";
+
+export interface PortalInvoice {
+    id: string;
+    invoiceNumber: string;
+    invoiceDate: string;
+    dueDate: string;
+    customerId: string;
+    customerName: string;
+    status: "draft" | "confirmed" | "done" | "cancelled";
+    paymentStatus: "unpaid" | "partial" | "paid";
+    lineItems: {
+        id: string;
+        productId: string;
+        productName: string;
+        analyticalAccountId?: string;
+        analyticalAccountName?: string;
+        quantity: number;
+        unitPrice: number;
+        taxRate: number;
+        taxAmount: number;
+        total: number;
+    }[];
+    subtotal: number;
+    taxTotal: number;
+    grandTotal: number;
+    paidViaCash: number;
+    paidViaBank: number;
+    amountDue: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface PortalOrder {
+    id: string;
+    orderNumber: string;
+    orderDate: string;
+    type: "sales" | "purchase";
+    partnerId: string;
+    partnerName: string;
+    status: "draft" | "confirmed" | "done" | "cancelled";
+    lineItems: {
+        id: string;
+        productId: string;
+        productName: string;
+        quantity: number;
+        unitPrice: number;
+        total: number;
+    }[];
+    total: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface PaymentTransaction {
+    id: string;
+    invoiceId: string;
+    invoiceNumber: string;
+    amount: number;
+    paymentMethod: PaymentMethodType;
+    paymentGateway?: string;
+    transactionId?: string;
+    status: "pending" | "processing" | "completed" | "failed" | "cancelled";
+    initiatedAt: string;
+    completedAt?: string;
+    failureReason?: string;
+}
+
+export interface RazorpayOptions {
+    key: string;
+    amount: number;
+    currency: string;
+    name: string;
+    description: string;
+    order_id: string;
+    handler: (response: RazorpayResponse) => void;
+    prefill: {
+        name: string;
+        email: string;
+        contact: string;
+    };
+    theme: {
+        color: string;
+    };
+}
+
+export interface RazorpayResponse {
+    razorpay_payment_id: string;
+    razorpay_order_id: string;
+    razorpay_signature: string;
+}
+
