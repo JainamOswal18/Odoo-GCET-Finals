@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import type { User, UserRole, AuthState } from "@/lib/types";
+import { buildApiUrl, API_ENDPOINTS } from "@/lib/api";
 
 interface AuthContextType extends AuthState {
     login: (loginId: string, password: string) => Promise<void>;
@@ -58,84 +59,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, []);
 
+    // ============================================================================
+    // UNIFIED LOGIN - Auto-detects Admin or Portal user
+    // ============================================================================
     const login = useCallback(async (loginId: string, password: string) => {
         setState((prev) => ({ ...prev, isLoading: true }));
 
         try {
-            // TODO: Replace with actual API call
-            // Simulating API call
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            const response = await fetch(buildApiUrl(API_ENDPOINTS.auth.login), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ loginId, password }),
+            });
 
-            // Mock validation
-            if (loginId.trim().toLowerCase() === "admin" && password === "Admin@123") {
-                const user: User = {
-                    id: "1",
-                    name: "Admin User",
-                    loginId: "admin",
-                    email: "admin@shivfurniture.com",
-                    role: "admin",
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                };
-                const token = "mock_token_admin";
-
-                localStorage.setItem(TOKEN_KEY, token);
-                localStorage.setItem(USER_KEY, JSON.stringify(user));
-
-                setState({
-                    user,
-                    token,
-                    isAuthenticated: true,
-                    isLoading: false,
-                });
-            } else if (loginId.trim().toLowerCase() === "portal" && password === "Portal@123") {
-                const user: User = {
-                    id: "2",
-                    name: "Portal User",
-                    loginId: "portal",
-                    email: "user@customer.com",
-                    role: "portal",
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                };
-                const token = "mock_token_portal";
-
-                localStorage.setItem(TOKEN_KEY, token);
-                localStorage.setItem(USER_KEY, JSON.stringify(user));
-
-                setState({
-                    user,
-                    token,
-                    isAuthenticated: true,
-                    isLoading: false,
-                });
-            } else {
-                throw new Error("Invalid credentials");
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Login failed');
             }
-        } catch (error) {
-            setState((prev) => ({ ...prev, isLoading: false }));
-            throw error;
-        }
-    }, []);
 
-    const signup = useCallback(async (data: SignupData) => {
-        setState((prev) => ({ ...prev, isLoading: true }));
+            const data = await response.json();
+            const { token, user: userData } = data;
 
-        try {
-            // TODO: Replace with actual API call
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-
-            // Mock signup
+            // Transform API response to match our User type
             const user: User = {
-                id: crypto.randomUUID(),
-                name: data.name,
-                loginId: data.loginId,
-                email: data.email,
-                role: data.role || "portal", // Default to portal if not provided
+                id: String(userData.id),
+                name: userData.name,
+                loginId: userData.loginId,
+                email: userData.email,
+                role: userData.role,
+                contactId: userData.contact_id, // For portal users
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
             };
-            const token = `mock_token_${user.id}`;
 
             localStorage.setItem(TOKEN_KEY, token);
             localStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -152,14 +109,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, []);
 
-    const createUser = useCallback(async (data: CreateUserData) => {
-        // TODO: Replace with actual API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+    // ============================================================================
+    // SIGNUP (Public signup is disabled - only admin can create users)
+    // ============================================================================
+    const signup = useCallback(async (data: SignupData) => {
+        setState((prev) => ({ ...prev, isLoading: true }));
 
-        // Admin creates user - in real app this would be an API call
-        console.log("User created:", data);
+        try {
+            // Public signup is disabled - throw error
+            throw new Error("Public signup is disabled. Please contact an administrator to create an account.");
+        } catch (error) {
+            setState((prev) => ({ ...prev, isLoading: false }));
+            throw error;
+        }
     }, []);
 
+    // ============================================================================
+    // CREATE USER (Admin only - creates admin or portal users)
+    // ============================================================================
+    const createUser = useCallback(async (data: CreateUserData) => {
+        const token = localStorage.getItem(TOKEN_KEY);
+
+        if (!token) {
+            throw new Error("Authentication required");
+        }
+
+        const response = await fetch(buildApiUrl(API_ENDPOINTS.auth.register), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                name: data.name,
+                loginId: data.loginId,
+                email: data.email,
+                password: data.password,
+                role: data.role,
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create user');
+        }
+
+        const result = await response.json();
+        return result;
+    }, []);
+
+    // ============================================================================
+    // LOGOUT
+    // ============================================================================
     const logout = useCallback(() => {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);

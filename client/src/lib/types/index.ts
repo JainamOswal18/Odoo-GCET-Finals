@@ -7,6 +7,7 @@ export interface User {
     loginId: string;
     email: string;
     role: UserRole;
+    contactId?: string; // For portal users - links to contact record
     createdAt: string;
     updatedAt: string;
 }

@@ -11,9 +11,8 @@ import { useAuth } from "@/contexts/AuthContext";
 const loginSchema = z.object({
     loginId: z
         .string()
-        .min(1, "Login ID is required")
-        .min(5, "Login ID must be at least 5 characters")
-        .max(12, "Login ID must be at most 12 characters"),
+        .min(1, "Login ID or Email is required")
+        .min(6, "Login ID must be at least 6 characters"),
     password: z.string().min(1, "Password is required"),
 });
 
@@ -39,7 +38,13 @@ export const Login: React.FC = () => {
 
         try {
             await login(data.loginId, data.password);
-            navigate("/dashboard");
+
+            // Wait a moment for state to update
+            setTimeout(() => {
+            // Role-based redirection will be handled by the router
+            // But we can navigate to a default route
+                navigate("/dashboard");
+            }, 100);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Login failed. Please try again.");
         } finally {
@@ -86,8 +91,8 @@ export const Login: React.FC = () => {
                     {/* Login Form */}
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                         <Input
-                            label="Login ID"
-                            placeholder="Enter your login ID"
+                            label="Login ID or Email"
+                            placeholder="Enter your login ID or email"
                             error={errors.loginId?.message}
                             {...register("loginId")}
                         />
@@ -126,25 +131,16 @@ export const Login: React.FC = () => {
                         </Button>
                     </form>
 
-                    {/* <div className="mt-6 text-center">
-                        <p className="text-gray-600">
-                            Don't have an account?{" "}
-                            <Link
-                                to="/signup"
-                                className="text-indigo-600 hover:text-indigo-700 font-medium"
-                            >
-                                Sign up
-                            </Link>
-                        </p>
-                    </div> */}
-
                     {/* Demo Credentials */}
                     <div className="mt-6 p-4 bg-gray-50 rounded-lg">
                         <p className="text-xs font-medium text-gray-500 mb-2">Demo Credentials:</p>
                         <div className="space-y-1 text-xs text-gray-600">
-                            <p><strong>Admin:</strong> admin / Admin@123</p>
-                            <p><strong>Portal:</strong> portal / Portal@123</p>
+                            <p><strong>Login ID:</strong> admin123</p>
+                            <p><strong>Password:</strong> admin123</p>
                         </div>
+                        <p className="text-xs text-gray-500 mt-2 italic">
+                            Portal users can also login here with their credentials
+                        </p>
                     </div>
                 </Card>
             </motion.div>

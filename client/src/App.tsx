@@ -3,7 +3,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { AdminLayout, PortalLayout } from "@/layouts";
 
 // Auth Pages
-import { Login, SignUp, CreateUser, ForgotPassword } from "@/pages/auth";
+import { Login, CreateUser, ForgotPassword } from "@/pages/auth";
 
 // Main Pages
 import { Dashboard } from "@/pages/Dashboard";
