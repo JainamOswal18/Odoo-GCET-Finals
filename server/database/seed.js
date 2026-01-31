@@ -30,7 +30,7 @@ async function seed() {
         );
         console.log('✓ Additional admin user created');
 
-        // Create Contacts first (needed for portal access)
+        // Create Contacts first (needed for portal users)
         await runQuery(
             `INSERT INTO contacts (name, contact_type, email, phone, is_vendor, is_customer, created_by)
        VALUES 
@@ -42,14 +42,14 @@ async function seed() {
         );
         console.log('✓ Sample contacts created');
 
-        // Create Portal Access for Customers
+        // Create Portal Users (linked to contacts)
         const portalPassword = await bcrypt.hash('Portal@123', 10);
         
         await runQuery(
-            `INSERT INTO portal_access (contact_id, login_id, email, password_hash)
+            `INSERT INTO users (login_id, email, password_hash, full_name, role, contact_id)
        VALUES 
-       (2, 'customer01', 'xyz@customer.com', ?),
-       (4, 'premium01', 'contact@premiumretail.com', ?)`,
+       ('customer01', 'xyz@customer.com', ?, 'XYZ Customer', 'portal', 2),
+       ('premium01', 'contact@premiumretail.com', ?, 'Premium Retail Ltd', 'portal', 4)`,
             [portalPassword, portalPassword]
         );
         console.log('✓ Portal users created');

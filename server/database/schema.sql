@@ -1,14 +1,19 @@
--- Users Table
+-- Users Table (Unified for both admin and portal users)
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     login_id VARCHAR(100) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(255),
-    role VARCHAR(20) DEFAULT 'admin',
+    role VARCHAR(20) DEFAULT 'portal',
+    contact_id INTEGER,
     active BOOLEAN DEFAULT 1,
+    last_login DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (contact_id) REFERENCES contacts(id),
+    CHECK (role IN ('admin', 'portal')),
+    CHECK ((role = 'portal' AND contact_id IS NOT NULL) OR (role = 'admin' AND contact_id IS NULL))
 );
 
 -- Contacts Table
@@ -348,20 +353,6 @@ CREATE TABLE IF NOT EXISTS journal_entry_lines (
     FOREIGN KEY (analytical_account_id) REFERENCES analytical_accounts(id)
 );
 
--- Portal Access Table
-CREATE TABLE IF NOT EXISTS portal_access (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    contact_id INTEGER UNIQUE NOT NULL,
-    login_id VARCHAR(100) UNIQUE,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    active BOOLEAN DEFAULT 1,
-    last_login DATETIME,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (contact_id) REFERENCES contacts(id)
-);
-
 -- Create Indexes
 CREATE INDEX IF NOT EXISTS idx_contacts_type ON contacts(contact_type);
 CREATE INDEX IF NOT EXISTS idx_contacts_vendor ON contacts(is_vendor);
@@ -380,4 +371,5 @@ CREATE INDEX IF NOT EXISTS idx_bills_payment ON bills(payment_status);
 CREATE INDEX IF NOT EXISTS idx_journal_posted ON journal_entries(posted);
 CREATE INDEX IF NOT EXISTS idx_journal_date ON journal_entries(entry_date);
 CREATE INDEX IF NOT EXISTS idx_journal_lines_account ON journal_entry_lines(analytical_account_id);
-CREATE INDEX IF NOT EXISTS idx_portal_access_login_id ON portal_access(login_id);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_contact_id ON users(contact_id);

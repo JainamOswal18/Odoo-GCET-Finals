@@ -12,7 +12,7 @@ const authenticate = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     const user = await getQuery(
-      'SELECT id, login_id, email, role, active FROM users WHERE id = ?',
+      'SELECT id, login_id, email, full_name, role, contact_id, active FROM users WHERE id = ?',
       [decoded.userId]
     );
 
@@ -43,19 +43,20 @@ const authenticatePortal = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    const portalAccess = await getQuery(
-      `SELECT pa.*, c.name, c.email as contact_email 
-       FROM portal_access pa 
-       JOIN contacts c ON pa.contact_id = c.id 
-       WHERE pa.id = ? AND pa.active = 1`,
-      [decoded.portalUserId]
+    const user = await getQuery(
+      `SELECT u.*, c.name as contact_name, c.email as contact_email 
+       FROM users u
+       JOIN contacts c ON u.contact_id = c.id 
+       WHERE u.id = ? AND u.role = 'portal' AND u.active = 1`,
+      [decoded.userId]
     );
 
-    if (!portalAccess) {
+    if (!user) {
       return res.status(401).json({ error: 'Invalid portal access' });
     }
 
-    req.portalUser = portalAccess;
+    req.portalUser = user;
+    req.user = user; // Also set req.user for consistency
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
