@@ -97,18 +97,7 @@ export const AnalyticalAccounts: React.FC = () => {
 
         try {
             setLoading(true);
-            const token = localStorage.getItem('shiv_auth_token');
-            const response = await fetch(`http://localhost:5000/api/analytical-accounts/${editingId}/archive`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to archive analytical account');
-            }
-
+            await analyticalAccountsApi.archive(editingId);
             await fetchAccounts();
             setView('list');
             setEditingId(null);

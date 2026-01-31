@@ -119,6 +119,16 @@ class ProductController {
       next(error);
     }
   }
+
+  async unarchive(req, res, next) {
+    try {
+      const { id } = req.params;
+      await runQuery('UPDATE products SET active = 1, updated_at = datetime(\'now\') WHERE id = ?', [id]);
+      res.json({ message: 'Product unarchived successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new ProductController();

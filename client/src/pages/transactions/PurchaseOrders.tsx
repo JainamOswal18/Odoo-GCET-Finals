@@ -1,11 +1,11 @@
-import React, { useState } from "react";
-import { Plus, Search, Filter, Save, FileText, AlertTriangle, Package } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, Search, Filter, Save, FileText, AlertTriangle, Package, Loader2 } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Input, Card, Select } from "@/components/ui";
-import { MOCK_CONTACTS, MOCK_PRODUCTS, MOCK_ANALYTICAL_ACCOUNTS } from "@/lib/mock";
-import type { PurchaseOrder, LineItem } from "@/lib/types";
+import { purchaseOrdersApi, contactsApi, productsApi, analyticalAccountsApi } from "@/lib/api";
+import type { PurchaseOrder } from "@/lib/types";
 
 const lineItemSchema = z.object({
     productId: z.string().min(1, "Product is required"),
@@ -25,44 +25,45 @@ const purchaseOrderSchema = z.object({
 
 type POFormData = z.infer<typeof purchaseOrderSchema>;
 
-const MOCK_POS: PurchaseOrder[] = [
-    {
-        id: "1",
-        orderNumber: "PO0001",
-        vendorId: "2",
-        vendorName: "Azure Interior",
-        orderDate: "2026-01-25",
-        status: "confirmed",
-        lineItems: [
-            {
-                id: "1",
-                productId: "1",
-                productName: "Table",
-                quantity: 6,
-                unitPrice: 2300,
-                taxRate: 18,
-                taxAmount: 2484,
-                subtotal: 13800,
-                total: 16284,
-                analyticalAccountId: "2",
-                analyticalAccountName: "Deepawali",
-            },
-        ],
-        subtotal: 13800,
-        taxTotal: 2484,
-        grandTotal: 16284,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    },
-];
-
 export const PurchaseOrders: React.FC = () => {
     const [view, setView] = useState<"list" | "form">("list");
-    const [orders, setOrders] = useState<PurchaseOrder[]>(MOCK_POS);
+    const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+    const [contacts, setContacts] = useState<any[]>([]);
+    const [products, setProducts] = useState<any[]>([]);
+    const [analyticalAccounts, setAnalyticalAccounts] = useState<any[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [status, setStatus] = useState<"draft" | "confirmed" | "done" | "cancelled">("draft");
     const [showBudgetWarning, setShowBudgetWarning] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Fetch data on mount
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const [ordersData, contactsData, productsData, accountsData] = await Promise.all([
+                purchaseOrdersApi.getAll(),
+                contactsApi.getAll(),
+                productsApi.getAll(),
+                analyticalAccountsApi.getAll()
+            ]);
+            setOrders(ordersData as PurchaseOrder[]);
+            setContacts(contactsData);
+            setProducts(productsData);
+            setAnalyticalAccounts(accountsData);
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch data');
+            console.error('Error fetching purchase orders data:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const {
         register,
@@ -98,74 +99,43 @@ export const PurchaseOrders: React.FC = () => {
         return sum + calculateLineTotal(item.quantity || 0, item.unitPrice || 0);
     }, 0) || 0;
 
-    const onSubmit = (data: POFormData) => {
-        const vendor = MOCK_CONTACTS.find(c => c.id === data.vendorId);
+    const onSubmit = async (data: POFormData) => {
+        try {
+            setLoading(true);
+            setError(null);
 
-        const processedLineItems: LineItem[] = data.lineItems.map((item, index) => {
-            const product = MOCK_PRODUCTS.find(p => p.id === item.productId);
-            const analyticAccount = MOCK_ANALYTICAL_ACCOUNTS.find(a => a.id === item.analyticalAccountId);
-            const subtotal = item.quantity * item.unitPrice;
-            const taxAmount = subtotal * 0.18;
-            const total = subtotal + taxAmount;
-
-            return {
-                id: `${index + 1}`,
-                productId: item.productId,
-                productName: product?.name || "",
+            const lineItemsPayload = data.lineItems.map((item) => ({
+                product_id: item.productId,
                 quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                taxRate: 18,
-                taxAmount,
-                subtotal,
-                total,
-                analyticalAccountId: item.analyticalAccountId,
-                analyticalAccountName: analyticAccount?.name,
-            };
-        });
+                unit_price: item.unitPrice,
+                analytical_account_id: item.analyticalAccountId || null,
+            }));
 
-        const subtotal = processedLineItems.reduce((sum, item) => sum + item.subtotal, 0);
-        const taxTotal = processedLineItems.reduce((sum, item) => sum + item.taxAmount, 0);
-
-        if (editingId) {
-            setOrders((prev) =>
-                prev.map((o) =>
-                    o.id === editingId
-                        ? {
-                            ...o,
-                            ...data,
-                            vendorName: vendor?.name || o.vendorName,
-                            lineItems: processedLineItems,
-                            subtotal,
-                            taxTotal,
-                            grandTotal: subtotal + taxTotal,
-                            status: status,
-                            updatedAt: new Date().toISOString()
-                        }
-                        : o
-                )
-            );
-        } else {
-            const newPO: PurchaseOrder = {
-                id: crypto.randomUUID(),
-                orderNumber: `PO${String(orders.length + 1).padStart(4, '0')}`,
-                vendorId: data.vendorId,
-                vendorName: vendor?.name || "",
-                orderDate: data.orderDate,
-                expectedDate: data.expectedDate,
+            const payload = {
+                vendor_id: data.vendorId,
+                order_date: data.orderDate,
+                expected_date: data.expectedDate || null,
                 status: status,
-                lineItems: processedLineItems,
-                subtotal,
-                taxTotal,
-                grandTotal: subtotal + taxTotal,
-                notes: data.notes,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+                notes: data.notes || null,
+                line_items: lineItemsPayload,
             };
-            setOrders((prev) => [...prev, newPO]);
+
+            if (editingId) {
+                await purchaseOrdersApi.update(editingId, payload);
+            } else {
+                await purchaseOrdersApi.create(payload);
+            }
+
+            await fetchData();
+            setView("list");
+            reset();
+            setEditingId(null);
+        } catch (err: any) {
+            setError(err.message || 'Failed to save purchase order');
+            console.error('Error saving purchase order:', err);
+        } finally {
+            setLoading(false);
         }
-        setView("list");
-        reset();
-        setEditingId(null);
     };
 
     const handleEdit = (po: PurchaseOrder) => {
@@ -225,9 +195,22 @@ export const PurchaseOrders: React.FC = () => {
         o.vendorName.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    if (loading && orders.length === 0) {
+        return (
+            <div className="flex items-center justify-center h-96">
+                <Loader2 className="w-12 h-12 animate-spin text-indigo-600" />
+            </div>
+        );
+    }
+
     if (view === "list") {
         return (
             <div className="space-y-6">
+                {error && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                        {error}
+                    </div>
+                )}
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
@@ -436,7 +419,7 @@ export const PurchaseOrders: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <Select
                         label="Vendor Name"
-                        options={MOCK_CONTACTS.filter(c => c.type === "vendor" || c.type === "both").map(c => ({
+                        options={contacts.filter(c => (c.type === "vendor" || c.type === "both") || (c.contactType === "vendor" || c.contactType === "both")).map(c => ({
                             value: c.id,
                             label: c.name
                         }))}
@@ -476,13 +459,13 @@ export const PurchaseOrders: React.FC = () => {
                                         <td className="p-2">{index + 1}</td>
                                         <td className="p-2">
                                             <Select
-                                                options={MOCK_PRODUCTS.map(p => ({
+                                                options={products.map(p => ({
                                                     value: p.id,
                                                     label: p.name
                                                 }))}
                                                 value={watchLineItems[index]?.productId}
                                                 onValueChange={(val) => {
-                                                    const prod = MOCK_PRODUCTS.find(p => p.id === val);
+                                                    const prod = products.find(p => p.id === val);
                                                     setValue(`lineItems.${index}.productId`, val);
                                                     if (prod) {
                                                         setValue(`lineItems.${index}.unitPrice`, prod.purchasePrice);
@@ -495,7 +478,7 @@ export const PurchaseOrders: React.FC = () => {
                                             <Select
                                                 options={[
                                                     { value: "none", label: "None" },
-                                                    ...MOCK_ANALYTICAL_ACCOUNTS.map(a => ({
+                                                    ...analyticalAccounts.map(a => ({
                                                         value: a.id,
                                                         label: a.name
                                                     }))

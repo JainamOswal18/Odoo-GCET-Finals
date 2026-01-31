@@ -114,18 +114,7 @@ export const Budgets: React.FC = () => {
 
         try {
             setLoading(true);
-            const token = localStorage.getItem('shiv_auth_token');
-            const response = await fetch(`http://localhost:5000/api/budgets/${editingId}/archive`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to archive budget');
-            }
-
+            await budgetsApi.archive(editingId);
             await fetchData();
             setView('list');
             setEditingId(null);

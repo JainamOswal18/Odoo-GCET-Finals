@@ -34,7 +34,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
         try {
             const token = localStorage.getItem('shiv_auth_token');
-            const response = await fetch('http://localhost:5000/api/auth/register', {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/auth/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

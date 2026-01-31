@@ -37,6 +37,17 @@ export const Products: React.FC = () => {
             const data = await productsApi.getAll();
             console.log('Products fetched:', data);
             setProducts(data);
+            
+            // Extract unique categories from products
+            const uniqueCategories = Array.from(
+                new Set(data.map((p: Product) => p.category).filter(Boolean))
+            ).sort();
+            
+            // Merge with existing categories to avoid duplicates
+            setCategories(prev => {
+                const merged = Array.from(new Set([...prev, ...uniqueCategories]));
+                return merged.sort();
+            });
         } catch (err: any) {
             console.error('Error fetching products:', err);
             setError(err.message || 'Failed to fetch products');
@@ -45,12 +56,14 @@ export const Products: React.FC = () => {
         }
     };
 
-    // Setup categories (mock list + dynamic)
-    const [categories, setCategories] = useState([
-        "Office Furniture",
-        "Raw Material",
-        "Services",
-        "Electronics"
+    // Setup categories (will be populated from database)
+    const [categories, setCategories] = useState<string[]>([
+        "Furniture",
+        "Electronics",
+        "Accessories",
+        "Wood",
+        "Service",
+        "Services"
     ]);
 
     const {
@@ -63,7 +76,7 @@ export const Products: React.FC = () => {
     } = useForm<ProductFormData>({
         resolver: zodResolver(productSchema),
         defaultValues: {
-            category: "Office Furniture",
+            category: "Furniture",
             salesPrice: 0,
             purchasePrice: 0,
         },
@@ -86,10 +99,19 @@ export const Products: React.FC = () => {
             setLoading(true);
             setError(null);
 
+            // Transform camelCase to snake_case for backend
+            const backendData = {
+                name: data.name,
+                category: data.category,
+                sale_price: data.salesPrice,
+                cost_price: data.purchasePrice,
+                description: data.description,
+            };
+
             if (editingId) {
-                await productsApi.update(editingId, data);
+                await productsApi.update(editingId, backendData);
             } else {
-                await productsApi.create(data);
+                await productsApi.create(backendData);
             }
 
             await fetchProducts();
@@ -108,8 +130,8 @@ export const Products: React.FC = () => {
         reset({
             name: product.name,
             category: product.category,
-            salesPrice: product.salesPrice,
-            purchasePrice: product.purchasePrice,
+            salesPrice: product.salesPrice || product.salePrice || 0,
+            purchasePrice: product.purchasePrice || product.costPrice || 0,
             description: product.description,
         });
         setView("form");
@@ -117,37 +139,37 @@ export const Products: React.FC = () => {
 
     const handleNew = () => {
         setEditingId(null);
-        reset({ category: "Office Furniture", salesPrice: 0, purchasePrice: 0 });
+        reset({ category: "Furniture", salesPrice: 0, purchasePrice: 0 });
         setView("form");
     };
 
     const handleArchive = async () => {
         if (!editingId) return;
 
-        if (!confirm('Are you sure you want to archive this product?')) {
+        const product = products.find(p => p.id === editingId);
+        const isArchived = product && Number(product.active) === 0;
+
+        const confirmMessage = isArchived 
+            ? 'Are you sure you want to unarchive this product?'
+            : 'Are you sure you want to archive this product?';
+
+        if (!confirm(confirmMessage)) {
             return;
         }
 
         try {
             setLoading(true);
-            const token = localStorage.getItem('shiv_auth_token');
-            const response = await fetch(`http://localhost:5000/api/products/${editingId}/archive`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to archive product');
+            if (isArchived) {
+                await productsApi.unarchive(editingId);
+            } else {
+                await productsApi.archive(editingId);
             }
-
             await fetchProducts();
             setView('list');
             setEditingId(null);
             reset();
         } catch (err: any) {
-            setError(err.message || 'Failed to archive product');
+            setError(err.message || `Failed to ${isArchived ? 'unarchive' : 'archive'} product`);
         } finally {
             setLoading(false);
         }
@@ -294,7 +316,7 @@ export const Products: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Tab Navigation */}
+                {/* Tab Navigation
                 <div className="flex items-center space-x-1 px-4 py-2 bg-gray-50">
                     <button
                         onClick={() => setActiveTab('new')}
@@ -317,7 +339,7 @@ export const Products: React.FC = () => {
                     >
                         Archived
                     </button>
-                </div>
+                </div> */}
 
                 {/* Action Buttons */}
                 <div className="flex items-center justify-end p-4 space-x-2">
@@ -328,14 +350,20 @@ export const Products: React.FC = () => {
                     >
                         {loading ? 'Saving...' : (editingId ? 'Update' : 'Save')}
                     </Button>
-                    <Button
-                        variant="outline"
-                        leftIcon={<Archive className="w-4 h-4" />}
-                        onClick={handleArchive}
-                        disabled={loading || !editingId}
-                    >
-                        Archive
-                    </Button>
+                    {editingId && (() => {
+                        const product = products.find(p => p.id === editingId);
+                        const isArchived = product && Number(product.active) === 0;
+                        return (
+                            <Button
+                                variant="outline"
+                                leftIcon={<Archive className="w-4 h-4" />}
+                                onClick={handleArchive}
+                                disabled={loading}
+                            >
+                                {isArchived ? 'Unarchive' : 'Archive'}
+                            </Button>
+                        );
+                    })()}
                 </div>
             </div>
 

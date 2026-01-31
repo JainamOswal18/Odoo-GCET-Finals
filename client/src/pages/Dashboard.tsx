@@ -6,8 +6,6 @@ import {
     DollarSign,
     Receipt,
     FileText,
-    ArrowUpRight,
-    ArrowDownRight,
     Loader2,
 } from "lucide-react";
 import { Card } from "@/components/ui";
@@ -157,29 +155,51 @@ export const Dashboard: React.FC = () => {
         color: string;
     }> = [];
     
-    // Extract all budget lines from all budgets
+    // Group budget lines by analytical account to avoid duplicates
+    const accountMap = new Map<string, { budget: number; spent: number }>();
+    
     budgets.forEach((budget) => {
         const lines = budget.lines || [];
         lines.forEach((line: any) => {
+            const accountName = line.analyticalAccountName || line.analytical_account_name || 'Unknown';
             const budgetedAmount = line.budgetedAmount || line.budgeted_amount || 0;
             const actualAmount = line.actualAmount || line.actual_amount || 0;
-            const percentage = budgetedAmount > 0 ? ((actualAmount / budgetedAmount) * 100) : 0;
             
-            budgetBreakdown.push({
-                name: line.analyticalAccountName || line.analytical_account_name || 'Unknown',
-                budget: budgetedAmount,
-                spent: actualAmount,
-                percentage: Math.round(percentage),
-                color: ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981"][budgetBreakdown.length % 5],
-            });
+            const existing = accountMap.get(accountName);
+            if (existing) {
+                // Aggregate amounts for same analytical account
+                existing.budget += budgetedAmount;
+                existing.spent += actualAmount;
+            } else {
+                accountMap.set(accountName, {
+                    budget: budgetedAmount,
+                    spent: actualAmount
+                });
+            }
         });
     });
     
-    // Take only top 5 cost centers (or show all if less than 5)
+    // Convert map to array with calculated percentages
+    const colors = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981"];
+    let colorIndex = 0;
+    accountMap.forEach((data, name) => {
+        const percentage = data.budget > 0 ? ((data.spent / data.budget) * 100) : 0;
+        budgetBreakdown.push({
+            name,
+            budget: data.budget,
+            spent: data.spent,
+            percentage: Math.round(percentage),
+            color: colors[colorIndex % colors.length],
+        });
+        colorIndex++;
+    });
+    
+    // Sort by budget amount (highest first) and take top 5
+    budgetBreakdown.sort((a, b) => b.budget - a.budget);
     const displayBudgets = budgetBreakdown.slice(0, 5);
     
     // Debug logging
-    console.log('🎯 Budget Breakdown:', budgetBreakdown);
+    console.log('🎯 Budget Breakdown (Aggregated):', budgetBreakdown);
     console.log('📊 Display Budgets:', displayBudgets);
 
     return (
