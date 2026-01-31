@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Filter, Save, Archive, Upload, X, UserPlus, Loader2 } from "lucide-react";
+import { Plus, Search, Filter, Save, Archive, Upload, X, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -46,6 +46,8 @@ export const Contacts: React.FC = () => {
             setLoading(true);
             setError(null);
             const data = await contactsApi.getAll();
+            console.log('Fetched contacts:', data);
+            console.log('First contact:', data[0]);
             setContacts(data);
         } catch (err: any) {
             setError(err.message || 'Failed to fetch contacts');
@@ -96,16 +98,66 @@ export const Contacts: React.FC = () => {
             setLoading(true);
             setError(null);
             
+            // Use FormData to support both JSON fields and file upload
+            const formData = new FormData();
+            formData.append('name', data.name);
+            formData.append('email', data.email);
+            formData.append('phone', data.phone || '');
+            formData.append('contact_type', data.type); // Backend expects contact_type
+            if (data.address) formData.append('address', data.address);
+            if (data.city) formData.append('city', data.city);
+            if (data.state) formData.append('state', data.state);
+            if (data.country) formData.append('country', data.country);
+            if (data.pincode) formData.append('postal_code', data.pincode); // Backend expects postal_code
+            if (data.tags && data.tags.length > 0) {
+                // Ensure tags is an array and not already stringified
+                const tagsArray = Array.isArray(data.tags) ? data.tags : [];
+                formData.append('tags', JSON.stringify(tagsArray));
+            }
+            
+            // Handle image upload
+            const imageInput = document.getElementById('image-upload') as HTMLInputElement;
+            if (imageInput?.files?.[0]) {
+                formData.append('image', imageInput.files[0]);
+            }
+            
             if (editingId) {
-                await contactsApi.update(editingId, data);
+                // For update, use fetch directly to send FormData
+                const token = localStorage.getItem('shiv_auth_token');
+                const response = await fetch(`http://localhost:5000/api/contacts/${editingId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Update failed');
+                }
             } else {
-                await contactsApi.create(data);
+                // For create, use fetch directly to send FormData
+                const token = localStorage.getItem('shiv_auth_token');
+                const response = await fetch('http://localhost:5000/api/contacts', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Create failed');
+                }
             }
             
             await fetchContacts();
             setView("list");
             reset();
             setEditingId(null);
+            setImagePreview(null);
         } catch (err: any) {
             setError(err.message || 'Failed to save contact');
             console.error('Error saving contact:', err);
@@ -116,18 +168,30 @@ export const Contacts: React.FC = () => {
 
     const handleEdit = (contact: Contact) => {
         setEditingId(contact.id);
+        
+        // Handle tags that might be string or array
+        let tags = contact.tags || [];
+        if (typeof tags === 'string') {
+            try {
+                tags = JSON.parse(tags);
+            } catch (e) {
+                tags = [];
+            }
+        }
+        if (!Array.isArray(tags)) tags = [];
+        
         reset({
             name: contact.name,
             email: contact.email,
             phone: contact.phone,
-            type: contact.type,
+            type: (contact.type || contact.contactType) as any,
             address: contact.address,
             city: contact.city,
             state: contact.state,
             country: contact.country,
-            pincode: contact.pincode,
-            tags: contact.tags || [],
-            image: contact.image,
+            pincode: contact.pincode || contact.postalCode,
+            tags: tags,
+            image: contact.image || contact.imageUrl,
         });
         setView("form");
     };
@@ -195,12 +259,19 @@ export const Contacts: React.FC = () => {
                                         <th className="px-4 py-3">Phone</th>
                                         <th className="px-4 py-3">Email</th>
                                         <th className="px-4 py-3">City</th>
+                                        <th className="px-4 py-3">Pincode</th>
                                         <th className="px-4 py-3">Type</th>
                                         <th className="px-4 py-3 rounded-tr-lg">Tags</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {filteredContacts.map((contact) => (
+                                    {filteredContacts.map((contact) => {
+                                        if (contact.name === 'ABC Suppliers Ltd') {
+                                            console.log('ABC Supplier contact data:', contact);
+                                            console.log('City:', contact.city);
+                                            console.log('Postal Code:', contact.postalCode, contact.pincode);
+                                        }
+                                        return (
                                         <tr
                                             key={contact.id}
                                             className="hover:bg-gray-50 cursor-pointer transition-colors"
@@ -214,35 +285,56 @@ export const Contacts: React.FC = () => {
                                             <td className="px-4 py-3 text-gray-500">
                                                 {contact.city || "-"}
                                             </td>
+                                            <td className="px-4 py-3 text-gray-500">
+                                                {contact.pincode || contact.postalCode || "-"}
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <span
-                                                    className={`px-2 py-1 rounded-full text-xs capitalize ${contact.type === "vendor"
+                                                    className={`px-2 py-1 rounded-full text-xs capitalize ${(contact.type || contact.contactType) === "vendor"
                                                         ? "bg-orange-100 text-orange-700"
                                                         : "bg-blue-100 text-blue-700"
                                                         }`}
                                                 >
-                                                    {contact.type}
+                                                    {contact.type || contact.contactType}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex gap-1 flex-wrap">
-                                                    {contact.tags?.slice(0, 2).map((tag) => (
-                                                        <span
-                                                            key={tag}
-                                                            className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
-                                                        >
-                                                            {tag}
-                                                        </span>
-                                                    ))}
-                                                    {contact.tags && contact.tags.length > 2 && (
-                                                        <span className="text-xs text-gray-400">
-                                                            +{contact.tags.length - 2}
-                                                        </span>
-                                                    )}
+                                                    {(() => {
+                                                        // Handle tags that might be string or array
+                                                        let tags = contact.tags;
+                                                        if (typeof tags === 'string') {
+                                                            try {
+                                                                tags = JSON.parse(tags);
+                                                            } catch (e) {
+                                                                tags = [];
+                                                            }
+                                                        }
+                                                        if (!Array.isArray(tags)) tags = [];
+                                                        
+                                                        return (
+                                                            <>
+                                                                {tags.slice(0, 2).map((tag, idx) => (
+                                                                    <span
+                                                                        key={idx}
+                                                                        className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
+                                                                    >
+                                                                        {tag}
+                                                                    </span>
+                                                                ))}
+                                                                {tags.length > 2 && (
+                                                                    <span className="text-xs text-gray-400">
+                                                                        +{tags.length - 2}
+                                                                    </span>
+                                                                )}
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))}
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -266,7 +358,11 @@ export const Contacts: React.FC = () => {
                     </div>
                     <div className="flex items-center space-x-2">
                         <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>Home</Button>
-                        <Button variant="ghost" size="sm" onClick={() => setView('list')}>Back</Button>
+                        <Button variant="ghost" size="sm" onClick={() => {
+                            setView('list');
+                            setEditingId(null);
+                            reset();
+                        }}>Back</Button>
                     </div>
                 </div>
 
@@ -299,30 +395,8 @@ export const Contacts: React.FC = () => {
                 <div className="flex items-center justify-between p-4">
                     <div></div>
                     <div className="flex items-center space-x-2">
-                        <Button
-                            variant="secondary"
-                            leftIcon={<UserPlus className="w-4 h-4" />}
-                            onClick={() => {
-                                if (!watch("email")) {
-                                    alert("Please enter an email address first.");
-                                    return;
-                                }
-                                navigate(`/master/create-user?name=${encodeURIComponent(watch("name"))}&email=${encodeURIComponent(watch("email") || "")}`);
-                            }}
-                            disabled={loading}
-                        >
-                            Grant Portal Access
-                        </Button>
-                        <div className="h-6 w-px bg-gray-300 mx-2" />
-                        <Button
-                            onClick={handleSubmit(onSubmit)}
-                            leftIcon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                            disabled={loading}
-                        >
-                            {loading ? 'Saving...' : 'Confirm'}
-                        </Button>
                         <Button variant="outline" leftIcon={<Archive className="w-4 h-4" />}>
-                            Archived
+                            Archive
                         </Button>
                     </div>
                 </div>
@@ -493,6 +567,30 @@ export const Contacts: React.FC = () => {
                             }}
                         />
                     </div>
+                </div>
+
+                {/* Save Button at Bottom */}
+                <div className="flex justify-end gap-3 mt-8 pt-6 border-t">
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            setView('list');
+                            reset();
+                            setEditingId(null);
+                            setImagePreview(null);
+                        }}
+                        disabled={loading}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleSubmit(onSubmit)}
+                        leftIcon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        disabled={loading}
+                        className="min-w-[120px]"
+                    >
+                        {loading ? 'Saving...' : (editingId ? 'Update' : 'Save')}
+                    </Button>
                 </div>
             </Card>
         </div >

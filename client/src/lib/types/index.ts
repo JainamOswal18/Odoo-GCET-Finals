@@ -25,18 +25,23 @@ export interface Contact {
     name: string;
     email: string;
     phone?: string;
-    type: "customer" | "vendor" | "both";
+    type?: "customer" | "vendor" | "both"; // Keep for backward compatibility
+    contactType?: "customer" | "vendor" | "both"; // What API actually returns
     address?: string; // Street
     city?: string;
     state?: string;
     country?: string;
-    pincode?: string;
+    pincode?: string; // Keep for backward compatibility
+    postalCode?: string; // What API actually returns
     tags?: string[];
     image?: string;
+    imageUrl?: string; // What API actually returns
     gstNumber?: string;
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
+    taxId?: string; // What API actually returns
+    isActive?: boolean;
+    active?: boolean; // What API actually returns
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 // Product Types

@@ -93,7 +93,7 @@ const extractDataArray = <T>(response: any, key: string): T[] => {
 // ============================================================================
 export const contactsApi = {
   getAll: async (): Promise<any[]> => {
-    const response = await apiRequest(API_ENDPOINTS.contacts);
+    const response = await apiRequest(`${API_ENDPOINTS.contacts}?limit=100`);
     const data = await handleApiResponse(response);
     return extractDataArray(data, 'contacts');
   },
