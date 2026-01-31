@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Search, Filter, Save, Archive, Settings2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Input, Card, Select } from "@/components/ui";
-import { MOCK_AUTO_ANALYTICAL_MODELS, MOCK_ANALYTICAL_ACCOUNTS } from "@/lib/mock";
-import type { AutoAnalyticalModel } from "@/lib/types";
+import { autoAnalyticalModelsApi, analyticalAccountsApi } from "@/lib/api";
+import type { AutoAnalyticalModel, AnalyticalAccount } from "@/lib/types";
 
 const modelSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -22,11 +22,35 @@ type ModelFormData = z.infer<typeof modelSchema>;
 
 export const AutoAnalytical: React.FC = () => {
     const [view, setView] = useState<"list" | "form">("list");
-    const [models, setModels] = useState<AutoAnalyticalModel[]>(MOCK_AUTO_ANALYTICAL_MODELS);
+    const [models, setModels] = useState<AutoAnalyticalModel[]>([]);
+    const [analyticalAccounts, setAnalyticalAccounts] = useState<AnalyticalAccount[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState<"new" | "confirm" | "archived">("confirm");
     const [status] = useState<"draft" | "confirm" | "cancelled">("draft");
+    const [_loading, setLoading] = useState(false);
+    const [_error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const [modelsData, accountsData] = await Promise.all([
+                autoAnalyticalModelsApi.getAll(),
+                analyticalAccountsApi.getAll()
+            ]);
+            setModels(modelsData);
+            setAnalyticalAccounts(accountsData);
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch data');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const {
         register,
@@ -42,36 +66,26 @@ export const AutoAnalytical: React.FC = () => {
         },
     });
 
-    const onSubmit = (data: ModelFormData) => {
-        const selectedAccount = MOCK_ANALYTICAL_ACCOUNTS.find(a => a.id === data.analyticAccountId);
-
-        if (editingId) {
-            setModels((prev) =>
-                prev.map((m) =>
-                    m.id === editingId
-                        ? {
-                            ...m,
-                            ...data,
-                            analyticAccountName: selectedAccount?.name,
-                            updatedAt: new Date().toISOString()
-                        }
-                        : m
-                )
-            );
-        } else {
-            const newModel: AutoAnalyticalModel = {
-                id: crypto.randomUUID(),
-                ...data,
-                analyticAccountName: selectedAccount?.name,
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            };
-            setModels((prev) => [...prev, newModel]);
+    const onSubmit = async (data: ModelFormData) => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            if (editingId) {
+                await autoAnalyticalModelsApi.update(editingId, data);
+            } else {
+                await autoAnalyticalModelsApi.create(data);
+            }
+            
+            await fetchData();
+            setView("list");
+            reset();
+            setEditingId(null);
+        } catch (err: any) {
+            setError(err.message || 'Failed to save model');
+        } finally {
+            setLoading(false);
         }
-        setView("list");
-        reset();
-        setEditingId(null);
     };
 
     const handleEdit = (model: AutoAnalyticalModel) => {
@@ -267,7 +281,7 @@ export const AutoAnalytical: React.FC = () => {
 
                         <Select
                             label="Analytic Account to Apply"
-                            options={MOCK_ANALYTICAL_ACCOUNTS.map(a => ({
+                            options={analyticalAccounts.map(a => ({
                                 value: a.id,
                                 label: `${a.code} - ${a.name}`
                             }))}

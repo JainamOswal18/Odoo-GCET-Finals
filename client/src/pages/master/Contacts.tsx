@@ -1,11 +1,11 @@
-﻿import { useState } from "react";
+﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Filter, Save, Archive, Upload, X, UserPlus } from "lucide-react";
+import { Plus, Search, Filter, Save, Archive, Upload, X, UserPlus, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Input, Card, Select } from "@/components/ui";
-import { MOCK_CONTACTS } from "@/lib/mock";
+import { contactsApi } from "@/lib/api";
 import type { Contact } from "@/lib/types";
 
 // Schema matching the wireframe fields
@@ -27,12 +27,33 @@ type ContactFormData = z.infer<typeof contactSchema>;
 
 export const Contacts: React.FC = () => {
     const [view, setView] = useState<"list" | "form">("list");
-    const [contacts, setContacts] = useState<Contact[]>(MOCK_CONTACTS);
+    const [contacts, setContacts] = useState<Contact[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState<"new" | "confirm" | "archived">("new");
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
+
+    // Fetch contacts on mount
+    useEffect(() => {
+        fetchContacts();
+    }, []);
+
+    const fetchContacts = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await contactsApi.getAll();
+            setContacts(data);
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch contacts');
+            console.error('Error fetching contacts:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Form setup
     const {
@@ -70,28 +91,27 @@ export const Contacts: React.FC = () => {
         );
     };
 
-    const onSubmit = (data: ContactFormData) => {
-        if (editingId) {
-            setContacts((prev) =>
-                prev.map((c) =>
-                    c.id === editingId
-                        ? { ...c, ...data, updatedAt: new Date().toISOString() }
-                        : c
-                )
-            );
-        } else {
-            const newContact: Contact = {
-                id: crypto.randomUUID(),
-                ...data,
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            };
-            setContacts((prev) => [...prev, newContact]);
+    const onSubmit = async (data: ContactFormData) => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            if (editingId) {
+                await contactsApi.update(editingId, data);
+            } else {
+                await contactsApi.create(data);
+            }
+            
+            await fetchContacts();
+            setView("list");
+            reset();
+            setEditingId(null);
+        } catch (err: any) {
+            setError(err.message || 'Failed to save contact');
+            console.error('Error saving contact:', err);
+        } finally {
+            setLoading(false);
         }
-        setView("list");
-        reset();
-        setEditingId(null);
     };
 
     const handleEdit = (contact: Contact) => {
@@ -136,6 +156,12 @@ export const Contacts: React.FC = () => {
                 </div>
 
                 <Card className="p-4">
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                            {error}
+                        </div>
+                    )}
+
                     <div className="flex items-center space-x-4 mb-6">
                         <div className="relative flex-1 max-w-sm">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -152,65 +178,75 @@ export const Contacts: React.FC = () => {
                         </Button>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 text-gray-700 font-medium">
-                                <tr>
-                                    <th className="px-4 py-3 rounded-tl-lg">Name</th>
-                                    <th className="px-4 py-3">Phone</th>
-                                    <th className="px-4 py-3">Email</th>
-                                    <th className="px-4 py-3">City</th>
-                                    <th className="px-4 py-3">Type</th>
-                                    <th className="px-4 py-3 rounded-tr-lg">Tags</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {filteredContacts.map((contact) => (
-                                    <tr
-                                        key={contact.id}
-                                        className="hover:bg-gray-50 cursor-pointer transition-colors"
-                                        onClick={() => handleEdit(contact)}
-                                    >
-                                        <td className="px-4 py-3 font-medium text-gray-900">
-                                            {contact.name}
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-500">{contact.phone}</td>
-                                        <td className="px-4 py-3 text-gray-500">{contact.email}</td>
-                                        <td className="px-4 py-3 text-gray-500">
-                                            {contact.city || "-"}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span
-                                                className={`px-2 py-1 rounded-full text-xs capitalize ${contact.type === "vendor"
-                                                    ? "bg-orange-100 text-orange-700"
-                                                    : "bg-blue-100 text-blue-700"
-                                                    }`}
-                                            >
-                                                {contact.type}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex gap-1 flex-wrap">
-                                                {contact.tags?.slice(0, 2).map((tag) => (
-                                                    <span
-                                                        key={tag}
-                                                        className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
-                                                    >
-                                                        {tag}
-                                                    </span>
-                                                ))}
-                                                {contact.tags && contact.tags.length > 2 && (
-                                                    <span className="text-xs text-gray-400">
-                                                        +{contact.tags.length - 2}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                        </div>
+                    ) : filteredContacts.length === 0 ? (
+                        <div className="text-center py-12 text-gray-500">
+                            No contacts found. Click "New Contact" to create one.
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-50 text-gray-700 font-medium">
+                                    <tr>
+                                        <th className="px-4 py-3 rounded-tl-lg">Name</th>
+                                        <th className="px-4 py-3">Phone</th>
+                                        <th className="px-4 py-3">Email</th>
+                                        <th className="px-4 py-3">City</th>
+                                        <th className="px-4 py-3">Type</th>
+                                        <th className="px-4 py-3 rounded-tr-lg">Tags</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {filteredContacts.map((contact) => (
+                                        <tr
+                                            key={contact.id}
+                                            className="hover:bg-gray-50 cursor-pointer transition-colors"
+                                            onClick={() => handleEdit(contact)}
+                                        >
+                                            <td className="px-4 py-3 font-medium text-gray-900">
+                                                {contact.name}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-500">{contact.phone}</td>
+                                            <td className="px-4 py-3 text-gray-500">{contact.email}</td>
+                                            <td className="px-4 py-3 text-gray-500">
+                                                {contact.city || "-"}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span
+                                                    className={`px-2 py-1 rounded-full text-xs capitalize ${contact.type === "vendor"
+                                                        ? "bg-orange-100 text-orange-700"
+                                                        : "bg-blue-100 text-blue-700"
+                                                        }`}
+                                                >
+                                                    {contact.type}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex gap-1 flex-wrap">
+                                                    {contact.tags?.slice(0, 2).map((tag) => (
+                                                        <span
+                                                            key={tag}
+                                                            className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
+                                                        >
+                                                            {tag}
+                                                        </span>
+                                                    ))}
+                                                    {contact.tags && contact.tags.length > 2 && (
+                                                        <span className="text-xs text-gray-400">
+                                                            +{contact.tags.length - 2}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </Card>
             </div>
         );
@@ -273,15 +309,17 @@ export const Contacts: React.FC = () => {
                                 }
                                 navigate(`/master/create-user?name=${encodeURIComponent(watch("name"))}&email=${encodeURIComponent(watch("email") || "")}`);
                             }}
+                            disabled={loading}
                         >
                             Grant Portal Access
                         </Button>
                         <div className="h-6 w-px bg-gray-300 mx-2" />
                         <Button
                             onClick={handleSubmit(onSubmit)}
-                            leftIcon={<Save className="w-4 h-4" />}
+                            leftIcon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            disabled={loading}
                         >
-                            Confirm
+                            {loading ? 'Saving...' : 'Confirm'}
                         </Button>
                         <Button variant="outline" leftIcon={<Archive className="w-4 h-4" />}>
                             Archived
@@ -292,6 +330,12 @@ export const Contacts: React.FC = () => {
             </div>
             {/* Main Form Content */}
             <Card className="p-8">
+                {error && (
+                    <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                        {error}
+                    </div>
+                )}
+                
                 <div className="mb-8">
                     <Input
                         placeholder="e.g. Azure Interior"

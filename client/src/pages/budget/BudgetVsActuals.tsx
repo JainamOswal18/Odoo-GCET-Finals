@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
-import { Filter, Download, TrendingUp, TrendingDown, BarChart3 } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Filter, Download, TrendingUp, TrendingDown, BarChart3, Loader2 } from "lucide-react";
 import { Card, Button, Badge, Select } from "@/components/ui";
-import { MOCK_ANALYTICAL_ACCOUNTS, MOCK_BUDGETS } from "@/lib/mock";
+import { analyticalAccountsApi, budgetsApi } from "@/lib/api";
 
 interface ComparisonData {
     id: string;
@@ -18,14 +18,40 @@ export default function BudgetVsActuals() {
     const [selectedAccount, setSelectedAccount] = useState<string>("all");
     const [selectedPeriod, setSelectedPeriod] = useState("2024");
     const [viewMode, setViewMode] = useState<"table" | "chart">("table");
+    const [budgets, setBudgets] = useState<any[]>([]);
+    const [analyticalAccounts, setAnalyticalAccounts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const [budgetsData, accountsData] = await Promise.all([
+                budgetsApi.getAll(),
+                analyticalAccountsApi.getAll()
+            ]);
+            setBudgets(budgetsData);
+            setAnalyticalAccounts(accountsData);
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch data');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Prepare comparison data
     const comparisonData: ComparisonData[] = useMemo(() => {
-        return MOCK_BUDGETS.map((budget) => {
-            const account = MOCK_ANALYTICAL_ACCOUNTS.find((a) => a.id === budget.analyticalAccountId);
+        return budgets.map((budget) => {
+            const account = analyticalAccounts.find((a) => a.id === budget.analyticalAccountId);
             const actual = budget.actualAmount || 0;
-            const variance = actual - budget.plannedAmount;
-            const variancePercent = ((variance / budget.plannedAmount) * 100);
+            const planned = budget.plannedAmount || 1;
+            const variance = actual - planned;
+            const variancePercent = ((variance / planned) * 100);
 
             let status: "under" | "over" | "on-track" = "on-track";
             if (variancePercent > 10) status = "over";
@@ -35,14 +61,14 @@ export default function BudgetVsActuals() {
                 id: budget.id,
                 account: account?.name || "Unknown",
                 period: `${budget.periodStart} to ${budget.periodEnd}`,
-                budgeted: budget.plannedAmount,
+                budgeted: planned,
                 actual,
                 variance,
                 variancePercent,
                 status,
             };
         });
-    }, []);
+    }, [budgets, analyticalAccounts]);
 
     // Filter data
     const filteredData = useMemo(() => {
@@ -56,7 +82,7 @@ export default function BudgetVsActuals() {
         const totalBudgeted = filteredData.reduce((sum, item) => sum + item.budgeted, 0);
         const totalActual = filteredData.reduce((sum, item) => sum + item.actual, 0);
         const totalVariance = totalActual - totalBudgeted;
-        const variancePercent = ((totalVariance / totalBudgeted) * 100);
+        const variancePercent = totalBudgeted > 0 ? ((totalVariance / totalBudgeted) * 100) : 0;
 
         return {
             totalBudgeted,
@@ -71,7 +97,7 @@ export default function BudgetVsActuals() {
 
     const accountOptions = [
         { value: "all", label: "All Accounts" },
-        ...MOCK_ANALYTICAL_ACCOUNTS.map((acc) => ({
+        ...analyticalAccounts.map((acc) => ({
             value: acc.name,
             label: acc.name,
         })),
@@ -81,6 +107,24 @@ export default function BudgetVsActuals() {
         console.log("Exporting budget vs actuals data...");
         alert("Export functionality will download a CSV/Excel file");
     };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-96">
+                <Loader2 className="w-12 h-12 animate-spin text-indigo-600" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="p-6">
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                    {error}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 space-y-6">

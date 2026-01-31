@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
-import { TrendingUp, TrendingDown, AlertTriangle, DollarSign, Calendar, PieChart as PieChartIcon } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { TrendingUp, TrendingDown, AlertTriangle, DollarSign, Calendar, PieChart as PieChartIcon, Loader2 } from "lucide-react";
 import { Card, Badge } from "@/components/ui";
-import { MOCK_ANALYTICAL_ACCOUNTS, MOCK_BUDGETS } from "@/lib/mock";
+import { analyticalAccountsApi, budgetsApi } from "@/lib/api";
 
 interface MetricCard {
     title: string;
@@ -22,12 +22,37 @@ interface BudgetAlert {
 
 export default function BudgetOverview() {
     const [selectedPeriod, setSelectedPeriod] = useState("2024");
+    const [budgets, setBudgets] = useState<any[]>([]);
+    const [analyticalAccounts, setAnalyticalAccounts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const [budgetsData, accountsData] = await Promise.all([
+                budgetsApi.getAll(),
+                analyticalAccountsApi.getAll()
+            ]);
+            setBudgets(budgetsData);
+            setAnalyticalAccounts(accountsData);
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch budget data');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Calculate metrics
     const metrics = useMemo(() => {
-        const totalBudget = MOCK_BUDGETS.reduce((sum: number, b) => sum + b.plannedAmount, 0);
-        const totalSpent = MOCK_BUDGETS.reduce((sum: number, b) => sum + (b.actualAmount || 0), 0);
-        const utilization = ((totalSpent / totalBudget) * 100).toFixed(1);
+        const totalBudget = budgets.reduce((sum: number, b) => sum + (b.plannedAmount || 0), 0);
+        const totalSpent = budgets.reduce((sum: number, b) => sum + (b.actualAmount || 0), 0);
+        const utilization = totalBudget > 0 ? ((totalSpent / totalBudget) * 100).toFixed(1) : '0';
         const remaining = totalBudget - totalSpent;
 
         return {
@@ -36,17 +61,17 @@ export default function BudgetOverview() {
             utilization: parseFloat(utilization),
             remaining,
         };
-    }, []);
+    }, [budgets]);
 
     // Prepare budget distribution data
     const budgetDistribution = useMemo(() => {
         const accountMap = new Map<string, { budget: number; spent: number }>();
 
-        MOCK_BUDGETS.forEach((budget) => {
-            const accountName = MOCK_ANALYTICAL_ACCOUNTS.find((a) => a.id === budget.analyticalAccountId)?.name || "Unknown";
+        budgets.forEach((budget) => {
+            const accountName = analyticalAccounts.find((a) => a.id === budget.analyticalAccountId)?.name || "Unknown";
             const existing = accountMap.get(accountName) || { budget: 0, spent: 0 };
             accountMap.set(accountName, {
-                budget: existing.budget + budget.plannedAmount,
+                budget: existing.budget + (budget.plannedAmount || 0),
                 spent: existing.spent + (budget.actualAmount || 0),
             });
         });
@@ -56,21 +81,22 @@ export default function BudgetOverview() {
                 name,
                 budget: data.budget,
                 spent: data.spent,
-                percentage: ((data.spent / data.budget) * 100).toFixed(1),
+                percentage: data.budget > 0 ? ((data.spent / data.budget) * 100).toFixed(1) : '0',
             }))
             .sort((a, b) => b.budget - a.budget);
-    }, []);
+    }, [budgets, analyticalAccounts]);
 
     // Identify over-budget items
     const alerts: BudgetAlert[] = useMemo(() => {
         const overBudget: BudgetAlert[] = [];
 
-        MOCK_BUDGETS.forEach((budget) => {
+        budgets.forEach((budget) => {
             const spent = budget.actualAmount || 0;
-            const percentage = (spent / budget.plannedAmount) * 100;
+            const planned = budget.plannedAmount || 1;
+            const percentage = (spent / planned) * 100;
 
             if (percentage >= 90) {
-                const accountName = MOCK_ANALYTICAL_ACCOUNTS.find((a) => a.id === budget.analyticalAccountId)?.name || "Unknown";
+                const accountName = analyticalAccounts.find((a) => a.id === budget.analyticalAccountId)?.name || "Unknown";
                 overBudget.push({
                     id: budget.id,
                     account: accountName,
@@ -83,7 +109,7 @@ export default function BudgetOverview() {
         });
 
         return overBudget.sort((a, b) => b.percentage - a.percentage);
-    }, []);
+    }, [budgets, analyticalAccounts]);
 
     const metricCards: MetricCard[] = [
         {
@@ -115,6 +141,24 @@ export default function BudgetOverview() {
             trend: "down",
         },
     ];
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-96">
+                <Loader2 className="w-12 h-12 animate-spin text-indigo-600" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="p-6">
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                    {error}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 space-y-6">

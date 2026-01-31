@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, ArrowLeft, Save, Archive } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Input, Card } from "@/components/ui";
-import { MOCK_ANALYTICAL_ACCOUNTS } from "@/lib/mock";
+import { analyticalAccountsApi } from "@/lib/api";
 import type { AnalyticalAccount } from "@/lib/types";
 
 const analyticSchema = z.object({
@@ -17,10 +17,29 @@ type AnalyticFormData = z.infer<typeof analyticSchema>;
 
 export const AnalyticalAccounts: React.FC = () => {
     const [view, setView] = useState<"list" | "form">("list");
-    const [accounts, setAccounts] = useState<AnalyticalAccount[]>(MOCK_ANALYTICAL_ACCOUNTS);
+    const [accounts, setAccounts] = useState<AnalyticalAccount[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm] = useState("");
     const [activeTab, setActiveTab] = useState<"new" | "confirm" | "archived">("confirm");
+    const [_loading, setLoading] = useState(false);
+    const [_error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchAccounts();
+    }, []);
+
+    const fetchAccounts = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await analyticalAccountsApi.getAll();
+            setAccounts(data);
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch analytical accounts');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const {
         register,
@@ -31,28 +50,26 @@ export const AnalyticalAccounts: React.FC = () => {
         resolver: zodResolver(analyticSchema),
     });
 
-    const onSubmit = (data: AnalyticFormData) => {
-        if (editingId) {
-            setAccounts((prev) =>
-                prev.map((a) =>
-                    a.id === editingId
-                        ? { ...a, ...data, updatedAt: new Date().toISOString() }
-                        : a
-                )
-            );
-        } else {
-            const newAccount: AnalyticalAccount = {
-                id: crypto.randomUUID(),
-                ...data,
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            };
-            setAccounts((prev) => [...prev, newAccount]);
+    const onSubmit = async (data: AnalyticFormData) => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            if (editingId) {
+                await analyticalAccountsApi.update(editingId, data);
+            } else {
+                await analyticalAccountsApi.create(data);
+            }
+            
+            await fetchAccounts();
+            setView("list");
+            reset();
+            setEditingId(null);
+        } catch (err: any) {
+            setError(err.message || 'Failed to save analytical account');
+        } finally {
+            setLoading(false);
         }
-        setView("list");
-        reset();
-        setEditingId(null);
     };
 
     const handleEdit = (account: AnalyticalAccount) => {

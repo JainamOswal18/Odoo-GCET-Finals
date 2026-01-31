@@ -6,6 +6,9 @@ const router = express.Router();
 
 router.use(authenticate);
 
+// Dashboard statistics
+router.get('/dashboard', reportController.dashboardStats);
+
 router.get('/budget-vs-actual', reportController.budgetVsActual);
 
 router.get('/analytical-account', reportController.analyticalAccount);

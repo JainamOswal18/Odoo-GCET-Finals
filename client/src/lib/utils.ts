@@ -92,3 +92,55 @@ export function getPaymentStatusColor(status: PaymentStatus): string {
     unpaid: "badge-error",
   }[status];
 }
+
+// ============================================================================
+// API Response Transformers (snake_case to camelCase)
+// ============================================================================
+
+/**
+ * Converts snake_case string to camelCase
+ * Example: "internal_reference" -> "internalReference"
+ */
+export function toCamelCase(str: string): string {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+/**
+ * Recursively transforms object keys from snake_case to camelCase
+ * Handles nested objects and arrays
+ */
+export function transformKeysToCamelCase<T = any>(obj: any): T {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(item => transformKeysToCamelCase(item)) as T;
+  }
+
+  // Handle dates (don't transform)
+  if (obj instanceof Date) {
+    return obj as T;
+  }
+
+  // Handle objects
+  if (typeof obj === 'object') {
+    const transformed: any = {};
+
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        const camelKey = toCamelCase(key);
+        const value = obj[key];
+
+        // Recursively transform nested objects/arrays
+        transformed[camelKey] = transformKeysToCamelCase(value);
+      }
+    }
+
+    return transformed as T;
+  }
+
+  // Return primitives as-is
+  return obj;
+}

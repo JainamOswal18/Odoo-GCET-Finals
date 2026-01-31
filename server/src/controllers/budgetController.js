@@ -64,6 +64,26 @@ class BudgetController {
 
       const budgets = await allQuery(query, params);
 
+      // Fetch budget lines for each budget with aggregated totals
+      for (let budget of budgets) {
+        const lines = await allQuery(
+          `SELECT bl.*, aa.name as analytical_account_name, aa.code as analytical_account_code
+           FROM budget_lines bl
+           LEFT JOIN analytical_accounts aa ON bl.analytical_account_id = aa.id
+           WHERE bl.budget_id = ?`,
+          [budget.id]
+        );
+
+        // Calculate totals
+        budget.total_budgeted = lines.reduce((sum, line) => sum + (line.budgeted_amount || 0), 0);
+        budget.total_actual = lines.reduce((sum, line) => sum + (line.actual_amount || 0), 0);
+        budget.total_remaining = budget.total_budgeted - budget.total_actual;
+        budget.achievement_percentage = budget.total_budgeted > 0
+          ? ((budget.total_actual / budget.total_budgeted) * 100).toFixed(2)
+          : 0;
+        budget.lines = lines;
+      }
+
       const countResult = await getQuery(
         'SELECT COUNT(*) as total FROM budgets WHERE 1=1' +
         (status ? ' AND status = ?' : '') +

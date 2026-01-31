@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Search, Filter, Save, Archive, TrendingUp, AlertCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Input, Card, Select } from "@/components/ui";
-import { MOCK_ANALYTICAL_ACCOUNTS } from "@/lib/mock";
-import type { Budget } from "@/lib/types";
+import { budgetsApi, analyticalAccountsApi } from "@/lib/api";
+import type { Budget, AnalyticalAccount } from "@/lib/types";
 
 const budgetSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -17,48 +17,36 @@ const budgetSchema = z.object({
 
 type BudgetFormData = z.infer<typeof budgetSchema>;
 
-// Mock budget data
-const MOCK_BUDGETS: Budget[] = [
-    {
-        id: "1",
-        name: "Q1 2026 Marketing Budget",
-        analyticalAccountId: "1",
-        analyticalAccountName: "Furniture Expo 2026",
-        periodStart: "2026-01-01",
-        periodEnd: "2026-03-31",
-        plannedAmount: 500000,
-        actualAmount: 325000,
-        achievementPercentage: 65,
-        remainingBalance: 175000,
-        revisions: [],
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    },
-    {
-        id: "2",
-        name: "Festival Season Budget",
-        analyticalAccountId: "2",
-        analyticalAccountName: "Deepawali Sale",
-        periodStart: "2026-10-01",
-        periodEnd: "2026-11-30",
-        plannedAmount: 800000,
-        actualAmount: 120000,
-        achievementPercentage: 15,
-        remainingBalance: 680000,
-        revisions: [],
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    },
-];
-
 export const Budgets: React.FC = () => {
     const [view, setView] = useState<"list" | "form">("list");
-    const [budgets, setBudgets] = useState<Budget[]>(MOCK_BUDGETS);
+    const [budgets, setBudgets] = useState<Budget[]>([]);
+    const [analyticalAccounts, setAnalyticalAccounts] = useState<AnalyticalAccount[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
-    const [activeTab, setActiveTab] = useState<"new" | "confirm" | "archived">("confirm");
+    const [activeTab, setActiveTab] = useState<"new" | "confirm" | "archived">("new");
+    const [_loading, setLoading] = useState(false);
+    const [_error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const [budgetsData, accountsData] = await Promise.all([
+                budgetsApi.getAll(),
+                analyticalAccountsApi.getAll()
+            ]);
+            setBudgets(budgetsData);
+            setAnalyticalAccounts(accountsData);
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch data');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const {
         register,
@@ -74,43 +62,26 @@ export const Budgets: React.FC = () => {
         },
     });
 
-    const onSubmit = (data: BudgetFormData) => {
-        const selectedAccount = MOCK_ANALYTICAL_ACCOUNTS.find(a => a.id === data.analyticalAccountId);
-
-        if (editingId) {
-            setBudgets((prev) =>
-                prev.map((b) =>
-                    b.id === editingId
-                        ? {
-                            ...b,
-                            ...data,
-                            analyticalAccountName: selectedAccount?.name,
-                            // Recalculate metrics
-                            achievementPercentage: (b.actualAmount / data.plannedAmount) * 100,
-                            remainingBalance: data.plannedAmount - b.actualAmount,
-                            updatedAt: new Date().toISOString()
-                        }
-                        : b
-                )
-            );
-        } else {
-            const newBudget: Budget = {
-                id: crypto.randomUUID(),
-                ...data,
-                analyticalAccountName: selectedAccount?.name,
-                actualAmount: 0,
-                achievementPercentage: 0,
-                remainingBalance: data.plannedAmount,
-                revisions: [],
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            };
-            setBudgets((prev) => [...prev, newBudget]);
+    const onSubmit = async (data: BudgetFormData) => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            if (editingId) {
+                await budgetsApi.update(editingId, data);
+            } else {
+                await budgetsApi.create(data);
+            }
+            
+            await fetchData();
+            setView("list");
+            reset();
+            setEditingId(null);
+        } catch (err: any) {
+            setError(err.message || 'Failed to save budget');
+        } finally {
+            setLoading(false);
         }
-        setView("list");
-        reset();
-        setEditingId(null);
     };
 
     const handleEdit = (budget: Budget) => {
@@ -300,7 +271,7 @@ export const Budgets: React.FC = () => {
                     <div className="space-y-6">
                         <Select
                             label="Analytical Account"
-                            options={MOCK_ANALYTICAL_ACCOUNTS.map(a => ({
+                            options={analyticalAccounts.map(a => ({
                                 value: a.id,
                                 label: `${a.code} - ${a.name}`
                             }))}

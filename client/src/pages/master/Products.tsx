@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Search, Filter, Save, Archive, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Input, Card, Select } from "@/components/ui";
-import { MOCK_PRODUCTS } from "@/lib/mock";
+import { productsApi } from "@/lib/api";
 import type { Product } from "@/lib/types";
 
 const productSchema = z.object({
@@ -19,10 +19,29 @@ type ProductFormData = z.infer<typeof productSchema>;
 
 export const Products: React.FC = () => {
     const [view, setView] = useState<"list" | "form">("list");
-    const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
+    const [products, setProducts] = useState<Product[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState<"new" | "confirm" | "archived">("new");
+    const [_loading, setLoading] = useState(false);
+    const [_error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchProducts();
+    }, []);
+
+    const fetchProducts = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await productsApi.getAll();
+            setProducts(data);
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch products');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Setup categories (mock list + dynamic)
     const [categories, setCategories] = useState([
@@ -60,31 +79,26 @@ export const Products: React.FC = () => {
         }
     };
 
-    const onSubmit = (data: ProductFormData) => {
-        if (editingId) {
-            setProducts((prev) =>
-                prev.map((p) =>
-                    p.id === editingId
-                        ? { ...p, ...data, updatedAt: new Date().toISOString() }
-                        : p
-                )
-            );
-        } else {
-            const newProduct: Product = {
-                id: crypto.randomUUID(),
-                ...data,
-                sku: `PROD-${Math.floor(Math.random() * 1000)}`, // Simple auto SKU
-                unit: "pcs",
-                taxRate: 18,
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            };
-            setProducts((prev) => [...prev, newProduct]);
+    const onSubmit = async (data: ProductFormData) => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            if (editingId) {
+                await productsApi.update(editingId, data);
+            } else {
+                await productsApi.create(data);
+            }
+            
+            await fetchProducts();
+            setView("list");
+            reset();
+            setEditingId(null);
+        } catch (err: any) {
+            setError(err.message || 'Failed to save product');
+        } finally {
+            setLoading(false);
         }
-        setView("list");
-        reset();
-        setEditingId(null);
     };
 
     const handleEdit = (product: Product) => {
