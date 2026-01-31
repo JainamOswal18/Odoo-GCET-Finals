@@ -14,7 +14,7 @@ class PortalController {
                     c.name as customerName,
                     i.total_amount as grandTotal,
                     i.subtotal,
-                    i.tax_total as taxTotal,
+                    i.tax_amount as taxTotal,
                     i.amount_paid as amountPaid,
                     i.amount_due as amountDue,
                     i.payment_status as paymentStatus,
@@ -40,9 +40,9 @@ class PortalController {
                         il.quantity,
                         il.unit_price as unitPrice,
                         il.tax_rate as taxRate,
-                        il.tax_amount as taxAmount,
+                        (il.subtotal * il.tax_rate / 100.0) as taxAmount,
                         il.subtotal,
-                        il.total
+                        (il.subtotal * (1 + il.tax_rate / 100.0)) as total
                     FROM invoice_lines il
                     JOIN products p ON il.product_id = p.id
                     LEFT JOIN analytical_accounts aa ON il.analytical_account_id = aa.id
@@ -86,7 +86,7 @@ class PortalController {
                     c.name as customerName,
                     i.total_amount as grandTotal,
                     i.subtotal,
-                    i.tax_total as taxTotal,
+                    i.tax_amount as taxTotal,
                     i.amount_paid as amountPaid,
                     i.amount_due as amountDue,
                     i.payment_status as paymentStatus,
@@ -113,9 +113,9 @@ class PortalController {
                     il.quantity,
                     il.unit_price as unitPrice,
                     il.tax_rate as taxRate,
-                    il.tax_amount as taxAmount,
+                    (il.subtotal * il.tax_rate / 100.0) as taxAmount,
                     il.subtotal,
-                    il.total
+                    (il.subtotal * (1 + il.tax_rate / 100.0)) as total
                 FROM invoice_lines il
                 JOIN products p ON il.product_id = p.id
                 LEFT JOIN analytical_accounts aa ON il.analytical_account_id = aa.id
@@ -341,7 +341,7 @@ class PortalController {
                             p.name as productName,
                             sol.quantity,
                             sol.unit_price as unitPrice,
-                            sol.total
+                            sol.subtotal as total
                         FROM sales_order_lines sol
                         JOIN products p ON sol.product_id = p.id
                         WHERE sol.so_id = ?`,
@@ -355,7 +355,7 @@ class PortalController {
                             p.name as productName,
                             pol.quantity,
                             pol.unit_price as unitPrice,
-                            pol.total
+                            pol.subtotal as total
                         FROM purchase_order_lines pol
                         JOIN products p ON pol.product_id = p.id
                         WHERE pol.po_id = ?`,

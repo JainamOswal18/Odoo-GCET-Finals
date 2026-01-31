@@ -11,6 +11,34 @@ async function seed() {
         await initializeDatabase();
         console.log('✓ Database schema initialized');
 
+        // Disable Foreign Keys for the entire seeding process to allow circular references or out-of-order inserts
+        await runQuery('PRAGMA foreign_keys = OFF');
+
+        // Clear existing data
+        await runQuery('DELETE FROM payment_allocations');
+        await runQuery('DELETE FROM payments');
+        await runQuery('DELETE FROM invoice_lines');
+        await runQuery('DELETE FROM invoices');
+        await runQuery('DELETE FROM sales_order_lines');
+        await runQuery('DELETE FROM sales_orders');
+        await runQuery('DELETE FROM bill_lines');
+        await runQuery('DELETE FROM bills');
+        await runQuery('DELETE FROM purchase_order_lines');
+        await runQuery('DELETE FROM purchase_orders');
+        await runQuery('DELETE FROM auto_analytical_conditions');
+        await runQuery('DELETE FROM auto_analytical_models');
+        await runQuery('DELETE FROM budget_lines');
+        await runQuery('DELETE FROM budgets');
+        await runQuery('DELETE FROM analytical_accounts');
+        await runQuery('DELETE FROM products');
+        await runQuery('DELETE FROM users');
+        await runQuery('DELETE FROM contacts');
+
+        // Reset Auto Increment counters (Optional but cleaner)
+        await runQuery("DELETE FROM sqlite_sequence");
+
+        console.log('✓ Existing data cleared');
+
         const hashedPassword = await bcrypt.hash('admin123', 10);
 
         // Create Admin Users
@@ -180,7 +208,13 @@ async function seed() {
        ('INV-2026-001', 2, 1, '2026-01-20', '2026-02-19', 'posted', 'partial', 60000.00, 10800.00, 70800.00, 30000.00, 40800.00, 'Partial payment received', 1, '2026-01-20 11:15:00', 1),
        ('INV-2026-002', 4, 2, '2026-01-25', '2026-02-24', 'posted', 'unpaid', 45000.00, 8100.00, 53100.00, 0.00, 53100.00, 'Pending payment from Premium Retail', 1, '2026-01-25 15:30:00', 1),
        ('INV-2026-003', 3, NULL, '2026-01-28', '2026-02-27', 'posted', 'unpaid', 25000.00, 4500.00, 29500.00, 0.00, 29500.00, 'Direct invoice', 1, '2026-01-28 09:45:00', 1),
-       ('INV-2026-004', 2, NULL, '2026-01-29', '2026-02-28', 'draft', 'unpaid', 15000.00, 2700.00, 17700.00, 0.00, 17700.00, 'Pending approval', 0, NULL, 1)`
+       ('INV-2026-004', 2, NULL, '2026-01-29', '2026-02-28', 'draft', 'unpaid', 15000.00, 2700.00, 17700.00, 0.00, 17700.00, 'Pending approval', 0, NULL, 1),
+       -- New Invoices for Premium Retail Ltd (ID: 4)
+       ('INV-2026-005', 4, NULL, '2026-02-01', '2026-03-02', 'posted', 'unpaid', 25000.00, 4500.00, 29500.00, 0.00, 29500.00, 'Bulk Order - Chairs', 1, '2026-02-01 09:00:00', 1),
+       ('INV-2026-006', 4, NULL, '2026-02-02', '2026-03-03', 'posted', 'paid', 10000.00, 1800.00, 11800.00, 11800.00, 0.00, 'Express Delivery Service', 1, '2026-02-02 10:30:00', 1),
+       ('INV-2026-007', 4, NULL, '2026-02-05', '2026-03-06', 'posted', 'unpaid', 75000.00, 13500.00, 88500.00, 0.00, 88500.00, 'Office Renovation Project', 1, '2026-02-05 14:15:00', 1),
+       ('INV-2026-008', 4, NULL, '2026-02-08', '2026-03-09', 'draft', 'unpaid', 5000.00, 900.00, 5900.00, 0.00, 5900.00, 'Draft Invoice - Consultation', 0, NULL, 1),
+       ('INV-2026-009', 4, NULL, '2026-02-10', '2026-03-11', 'posted', 'partial', 100000.00, 18000.00, 118000.00, 50000.00, 68000.00, 'Large Bulk Order', 1, '2026-02-10 11:00:00', 1)`
         );
         console.log('✓ Customer invoices created');
 
@@ -194,7 +228,23 @@ async function seed() {
        (2, 1, 'Teak chairs', 2, 5000.00, 18.00, 10000.00, 1),
        (3, 1, 'Teak wood chairs', 5, 5000.00, 18.00, 25000.00, 1),
        (4, 2, 'Office desk', 1, 12000.00, 18.00, 12000.00, 1),
-       (4, 1, 'Teak chair', 1, 5000.00, 18.00, 5000.00, 1)`
+       (4, 1, 'Teak chair', 1, 5000.00, 18.00, 5000.00, 1),
+       
+       -- Lines for INV-2026-005
+       (5, 1, 'Teak Wood Chair (Bulk)', 5, 5000.00, 18.00, 25000.00, 1),
+
+       -- Lines for INV-2026-006
+       (6, 4, 'Express Delivery', 10, 1000.00, 18.00, 10000.00, 1),
+
+       -- Lines for INV-2026-007
+       (7, 2, 'Office Desk (Large)', 5, 12000.00, 18.00, 60000.00, 1),
+       (7, 4, 'Installation Service', 15, 1000.00, 18.00, 15000.00, 1),
+
+       -- Lines for INV-2026-008
+       (8, 4, 'Consultation Fee', 5, 1000.00, 18.00, 5000.00, 1),
+
+       -- Lines for INV-2026-009
+       (9, 2, 'Executive Office Desk', 8, 12500.00, 18.00, 100000.00, 1)`
         );
         console.log('✓ Invoice lines created');
 
