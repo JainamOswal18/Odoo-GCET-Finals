@@ -12,7 +12,7 @@ const loginSchema = z.object({
     loginId: z
         .string()
         .min(1, "Login ID is required")
-        .min(6, "Login ID must be at least 6 characters")
+        .min(5, "Login ID must be at least 5 characters")
         .max(12, "Login ID must be at most 12 characters"),
     password: z.string().min(1, "Password is required"),
 });
@@ -126,8 +126,7 @@ export const Login: React.FC = () => {
                         </Button>
                     </form>
 
-                    {/* Sign Up Link */}
-                    <div className="mt-6 text-center">
+                    {/* <div className="mt-6 text-center">
                         <p className="text-gray-600">
                             Don't have an account?{" "}
                             <Link
@@ -137,7 +136,7 @@ export const Login: React.FC = () => {
                                 Sign up
                             </Link>
                         </p>
-                    </div>
+                    </div> */}
 
                     {/* Demo Credentials */}
                     <div className="mt-6 p-4 bg-gray-50 rounded-lg">

@@ -7,6 +7,10 @@ import { Login, SignUp, CreateUser, ForgotPassword } from "@/pages/auth";
 
 // Main Pages
 import { Dashboard } from "@/pages/Dashboard";
+import { Contacts } from "@/pages/master/Contacts";
+import { Products } from "@/pages/master/Products";
+import { AnalyticalAccounts } from "@/pages/master/AnalyticalAccounts";
+import { AutoAnalytical } from "@/pages/master/AutoAnalytical";
 
 // Placeholder components for routes not yet implemented
 const Placeholder = ({ title }: { title: string }) => (
@@ -19,11 +23,7 @@ const Placeholder = ({ title }: { title: string }) => (
 );
 
 // Master Data Pages (placeholders for now)
-const Contacts = () => <Placeholder title="Contacts" />;
-const Products = () => <Placeholder title="Products" />;
-const AnalyticalAccounts = () => <Placeholder title="Analytical Accounts" />;
 const Budgets = () => <Placeholder title="Budgets" />;
-const AutoAnalytical = () => <Placeholder title="Auto Analytical Models" />;
 
 // Transaction Pages (placeholders for now)
 const PurchaseOrders = () => <Placeholder title="Purchase Orders" />;
@@ -53,7 +53,7 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
+          {/* <Route path="/signup" element={<SignUp />} /> */}
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Admin Routes */}

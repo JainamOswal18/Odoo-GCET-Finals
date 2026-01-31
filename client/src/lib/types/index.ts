@@ -25,10 +25,13 @@ export interface Contact {
     email: string;
     phone?: string;
     type: "customer" | "vendor" | "both";
-    address?: string;
+    address?: string; // Street
     city?: string;
     state?: string;
+    country?: string;
     pincode?: string;
+    tags?: string[];
+    image?: string;
     gstNumber?: string;
     isActive: boolean;
     createdAt: string;
@@ -42,8 +45,9 @@ export interface Product {
     sku: string;
     category: string;
     description?: string;
-    unitPrice: number;
-    costPrice: number;
+    salesPrice: number; // unitPrice
+    purchasePrice: number; // costPrice
+    image?: string;
     unit: string;
     taxRate: number;
     isActive: boolean;
@@ -95,23 +99,17 @@ export interface BudgetRevision {
 export interface AutoAnalyticalModel {
     id: string;
     name: string;
-    description?: string;
-    rules: AutoAnalyticalRule[];
+    analyticAccountId: string;
+    analyticAccountName?: string;
+    priority: number;
+    // Conditions (optional matchers)
+    partnerTag?: string;
+    productCategory?: string;
+    partnerId?: string;
+    productId?: string;
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
-}
-
-export interface AutoAnalyticalRule {
-    id: string;
-    modelId: string;
-    condition: {
-        field: "productCategory" | "contactType" | "transactionType";
-        operator: "equals" | "contains" | "startsWith";
-        value: string;
-    };
-    analyticalAccountId: string;
-    analyticalAccountName?: string;
 }
 
 // Transaction Line Item

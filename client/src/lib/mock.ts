@@ -1,0 +1,126 @@
+import type { Contact, Product, AnalyticalAccount, AutoAnalyticalModel } from "./types";
+
+export const MOCK_CONTACTS: Contact[] = [
+    {
+        id: "1",
+        name: "Azure Interior",
+        email: "azure@example.com",
+        phone: "9876543210",
+        type: "customer",
+        address: "123 Design Street",
+        city: "Ahmedabad",
+        state: "Gujarat",
+        country: "India",
+        pincode: "380001",
+        tags: ["B2B", "Interior"],
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    },
+    {
+        id: "2",
+        name: "WoodMart Supplies",
+        email: "supply@woodmart.com",
+        phone: "9123456780",
+        type: "vendor",
+        address: "45 Timber Road",
+        city: "Gandhinagar",
+        state: "Gujarat",
+        country: "India",
+        pincode: "382010",
+        tags: ["Raw Material", "Wood"],
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    },
+];
+
+export const MOCK_PRODUCTS: Product[] = [
+    {
+        id: "1",
+        name: "Office Chair",
+        sku: "FURN-001",
+        category: "Office Furniture",
+        salesPrice: 4500,
+        purchasePrice: 3000,
+        unit: "pcs",
+        taxRate: 18,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    },
+    {
+        id: "2",
+        name: "Teak Wood Sheet",
+        sku: "MAT-001",
+        category: "Raw Material",
+        salesPrice: 0,
+        purchasePrice: 1200,
+        unit: "sqft",
+        taxRate: 18,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    },
+    {
+        id: "3",
+        name: "Executive Desk",
+        sku: "FURN-002",
+        category: "Office Furniture",
+        salesPrice: 12000,
+        purchasePrice: 8000,
+        unit: "pcs",
+        taxRate: 18,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    },
+];
+
+export const MOCK_ANALYTICAL_ACCOUNTS: AnalyticalAccount[] = [
+    {
+        id: "1",
+        code: "ANA-001",
+        name: "Furniture Expo 2026",
+        description: "Expenses and Revenue for Expo",
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    },
+    {
+        id: "2",
+        code: "ANA-002",
+        name: "Deepawali Sale",
+        description: "Festival Season Tracking",
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    },
+];
+
+export const MOCK_AUTO_ANALYTICAL_MODELS: AutoAnalyticalModel[] = [
+    {
+        id: "1",
+        name: "Office Expenses",
+        analyticAccountId: "1",
+        analyticAccountName: "Furniture Expo 2026",
+        priority: 10,
+        productCategory: "Office Furniture",
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    },
+    {
+        id: "2",
+        name: "Vendor Specific",
+        analyticAccountId: "2",
+        analyticAccountName: "Deepawali Sale",
+        priority: 20,
+        partnerTag: "Raw Material",
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    },
+];
+
+
