@@ -284,8 +284,8 @@ export const CustomerInvoices: React.FC = () => {
     };
 
     const filteredInvoices = invoices.filter((inv) =>
-        inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        inv.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+        (inv.invoiceNumber || '')?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (inv.customerName || '')?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     if (view === "list") {
@@ -658,7 +658,7 @@ export const CustomerInvoices: React.FC = () => {
                                                             const prod = MOCK_PRODUCTS.find(p => p.id === val);
                                                             setValue(`lineItems.${index}.productId`, val);
                                                             if (prod) {
-                                                                setValue(`lineItems.${index}.unitPrice`, prod.salesPrice);
+                                                                setValue(`lineItems.${index}.unitPrice`, prod.salesPrice ?? prod.salePrice ?? 0);
                                                             }
                                                         }}
                                                     />

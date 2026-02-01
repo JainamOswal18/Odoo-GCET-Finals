@@ -12,8 +12,17 @@ class ContactController {
       const is_vendor = ['vendor', 'both'].includes(contact_type);
       const is_customer = ['customer', 'both'].includes(contact_type);
 
-      // Handle tags - convert array to JSON string
-      const tagsJson = tags ? JSON.stringify(Array.isArray(tags) ? tags : [tags]) : null;
+      // Handle tags - if already a string (from FormData), use as-is; otherwise stringify
+      let tagsJson = null;
+      if (tags) {
+        if (typeof tags === 'string') {
+          // Already a JSON string from FormData
+          tagsJson = tags;
+        } else {
+          // Convert array to JSON string
+          tagsJson = JSON.stringify(Array.isArray(tags) ? tags : [tags]);
+        }
+      }
 
       // Handle uploaded image
       const imageUrl = req.file ? `/uploads/contacts/${req.file.filename}` : null;
@@ -141,7 +150,13 @@ class ContactController {
 
       // Handle tags conversion
       if (updates.tags) {
-        updates.tags = JSON.stringify(Array.isArray(updates.tags) ? updates.tags : [updates.tags]);
+        if (typeof updates.tags === 'string') {
+          // Already a JSON string from FormData
+          updates.tags = updates.tags;
+        } else {
+        // Convert array to JSON string
+          updates.tags = JSON.stringify(Array.isArray(updates.tags) ? updates.tags : [updates.tags]);
+        }
       }
 
       // Handle uploaded image

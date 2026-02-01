@@ -149,26 +149,22 @@ export const portalService = {
         razorpayOrderId: string;
         razorpaySignature: string;
     }): Promise<PaymentTransaction> {
-        try {
-            const token = localStorage.getItem("token");
-            const response = await fetch(`${API_BASE}/portal/payments/verify`, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(paymentData),
-            });
+        const token = localStorage.getItem("token");
+        const response = await fetch(`${API_BASE}/portal/payments/verify`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(paymentData),
+        });
 
-            if (!response.ok) {
-                throw new Error("Failed to verify payment");
-            }
-
-            const data: ApiResponse<PaymentTransaction> = await response.json();
-            return data.data;
-        } catch (error) {
-            throw error;
+        if (!response.ok) {
+            throw new Error("Failed to verify payment");
         }
+
+        const data: ApiResponse<PaymentTransaction> = await response.json();
+        return data.data;
     },
 
     /**

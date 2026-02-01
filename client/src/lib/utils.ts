@@ -5,6 +5,34 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Converts an image path to a full URL
+ * @param imagePath - The image path (can be relative like /uploads/contacts/image.jpg or full URL)
+ * @returns Full URL to the image
+ */
+export function getImageUrl(imagePath: string | null | undefined): string | null {
+  if (!imagePath) return null;
+
+  // If already a full URL, return as-is
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+
+  // If it's a data URL (base64), return as-is
+  if (imagePath.startsWith('data:')) {
+    return imagePath;
+  }
+
+  // Construct full URL from relative path
+  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+  const serverBase = apiBase.replace('/api', '');
+
+  // Ensure path starts with /
+  const path = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+
+  return `${serverBase}${path}`;
+}
+
 // Format currency
 export function formatCurrency(amount: number, currency: string = "INR"): string {
   return new Intl.NumberFormat("en-IN", {

@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Search, Filter, Save, CreditCard, AlertTriangle } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Input, Card, Select } from "@/components/ui";
-import { MOCK_CONTACTS, MOCK_PRODUCTS, MOCK_ANALYTICAL_ACCOUNTS } from "@/lib/mock";
-import type { VendorBill, LineItem, PaymentStatus } from "@/lib/types";
+import { billsApi, purchaseOrdersApi, contactsApi, productsApi, analyticalAccountsApi } from "@/lib/api";
+import type { VendorBill } from "@/lib/types";
 
 const lineItemSchema = z.object({
     productId: z.string().min(1, "Product is required"),
@@ -26,48 +26,45 @@ const vendorBillSchema = z.object({
 
 type BillFormData = z.infer<typeof vendorBillSchema>;
 
-const MOCK_BILLS: VendorBill[] = [
-    {
-        id: "1",
-        billNumber: "BILL/2025/0001",
-        vendorId: "2",
-        vendorName: "Azure Interior",
-        purchaseOrderId: "1",
-        purchaseOrderNumber: "PO0001",
-        billDate: "2026-01-25",
-        dueDate: "2026-02-25",
-        status: "confirmed",
-        paymentStatus: "unpaid",
-        lineItems: [
-            {
-                id: "1",
-                productId: "1",
-                productName: "Table",
-                quantity: 6,
-                unitPrice: 2300,
-                taxRate: 18,
-                taxAmount: 2484,
-                subtotal: 13800,
-                total: 16284,
-                analyticalAccountId: "2",
-                analyticalAccountName: "Deepawali",
-            },
-        ],
-        subtotal: 13800,
-        taxTotal: 2484,
-        grandTotal: 16350,
-        amountPaid: 0,
-        amountDue: 16350,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    },
-];
-
 export const VendorBills: React.FC = () => {
     const [view, setView] = useState<"list" | "form">("list");
-    const [bills, setBills] = useState<VendorBill[]>(MOCK_BILLS);
+    const [bills, setBills] = useState<VendorBill[]>([]);
+    const [_purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
+    const [contacts, setContacts] = useState<any[]>([]);
+    const [products, setProducts] = useState<any[]>([]);
+    const [analyticalAccounts, setAnalyticalAccounts] = useState<any[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [_loading, setLoading] = useState(false);
+    const [_error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const [billsData, posData, contactsData, productsData, accountsData] = await Promise.all([
+                billsApi.getAll(),
+                purchaseOrdersApi.getAll(),
+                contactsApi.getAll(),
+                productsApi.getAll(),
+                analyticalAccountsApi.getAll()
+            ]);
+            setBills(billsData as VendorBill[]);
+            setPurchaseOrders(posData);
+            setContacts(contactsData);
+            setProducts(productsData);
+            setAnalyticalAccounts(accountsData);
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch data');
+            console.error('Error fetching vendor bills data:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
     const [status, setStatus] = useState<"draft" | "confirmed" | "done" | "cancelled">("draft");
     const [showBudgetWarning, setShowBudgetWarning] = useState(false);
 
@@ -105,88 +102,45 @@ export const VendorBills: React.FC = () => {
         return sum + calculateLineTotal(item.quantity || 0, item.unitPrice || 0);
     }, 0) || 0;
 
-    const calculatePaymentStatus = (amountPaid: number, grandTotal: number): PaymentStatus => {
-        if (amountPaid === 0) return "unpaid";
-        if (amountPaid >= grandTotal) return "paid";
-        return "partial";
-    };
+    const onSubmit = async (data: BillFormData) => {
+        try {
+            setLoading(true);
+            setError(null);
 
-    const onSubmit = (data: BillFormData) => {
-        const vendor = MOCK_CONTACTS.find(c => c.id === data.vendorId);
-
-        const processedLineItems: LineItem[] = data.lineItems.map((item, index) => {
-            const product = MOCK_PRODUCTS.find(p => p.id === item.productId);
-            const analyticAccount = MOCK_ANALYTICAL_ACCOUNTS.find(a => a.id === item.analyticalAccountId);
-            const subtotal = item.quantity * item.unitPrice;
-            const taxAmount = subtotal * 0.18;
-            const total = subtotal + taxAmount;
-
-            return {
-                id: `${index + 1}`,
-                productId: item.productId,
-                productName: product?.name || "",
+            // Backend expects: lines with product_id, quantity, unit_price, analytical_account_id
+            const lineItemsPayload = data.lineItems.map((item) => ({
+                product_id: item.productId,
                 quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                taxRate: 18,
-                taxAmount,
-                subtotal,
-                total,
-                analyticalAccountId: item.analyticalAccountId,
-                analyticalAccountName: analyticAccount?.name,
-            };
-        });
+                unit_price: item.unitPrice,
+                tax_rate: 18, // 18% GST
+                analytical_account_id: item.analyticalAccountId || null,
+            }));
 
-        const subtotal = processedLineItems.reduce((sum, item) => sum + item.subtotal, 0);
-        const taxTotal = processedLineItems.reduce((sum, item) => sum + item.taxAmount, 0);
-        const total = subtotal + taxTotal;
-
-        if (editingId) {
-            setBills((prev) =>
-                prev.map((b) =>
-                    b.id === editingId
-                        ? {
-                            ...b,
-                            ...data,
-                            vendorName: vendor?.name || b.vendorName,
-                            lineItems: processedLineItems,
-                            subtotal,
-                            taxTotal,
-                            grandTotal: total,
-                            amountDue: total - b.amountPaid,
-                            paymentStatus: calculatePaymentStatus(b.amountPaid, total),
-                            status: status,
-                            updatedAt: new Date().toISOString()
-                        }
-                        : b
-                )
-            );
-        } else {
-            const newBill: VendorBill = {
-                id: crypto.randomUUID(),
-                billNumber: `BILL/2025/${String(bills.length + 1).padStart(4, '0')}`,
-                vendorId: data.vendorId,
-                vendorName: vendor?.name || "",
-                purchaseOrderId: data.purchaseOrderId,
-                billDate: data.billDate,
-                dueDate: data.dueDate,
-                status: status,
-                paymentStatus: "unpaid",
-                lineItems: processedLineItems,
-                subtotal,
-                taxTotal,
-                grandTotal: total,
-                amountPaid: 0,
-                amountDue: total,
-                notes: data.notes,
-                billReference: data.billReference,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+            const payload = {
+                vendor_id: data.vendorId,
+                po_id: data.purchaseOrderId || null,
+                bill_date: data.billDate,
+                due_date: data.dueDate,
+                notes: data.notes || null,
+                lines: lineItemsPayload,
             };
-            setBills((prev) => [...prev, newBill]);
+
+            if (editingId) {
+                await billsApi.update(editingId, payload);
+            } else {
+                await billsApi.create(payload);
+            }
+
+            await fetchData();
+            setView("list");
+            reset();
+            setEditingId(null);
+        } catch (err: any) {
+            setError(err.message || 'Failed to save vendor bill');
+            console.error('Error saving vendor bill:', err);
+        } finally {
+            setLoading(false);
         }
-        setView("list");
-        reset();
-        setEditingId(null);
     };
 
     const handleEdit = (bill: VendorBill) => {
@@ -243,8 +197,8 @@ export const VendorBills: React.FC = () => {
     };
 
     const filteredBills = bills.filter((b) =>
-        b.billNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        b.vendorName.toLowerCase().includes(searchTerm.toLowerCase())
+        (b.billNumber || '')?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (b.vendorName || '')?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const currentBill = editingId ? bills.find(b => b.id === editingId) : null;
@@ -311,10 +265,10 @@ export const VendorBills: React.FC = () => {
                                             {new Date(bill.dueDate).toLocaleDateString()}
                                         </td>
                                         <td className="px-4 py-3 text-right font-medium text-gray-900">
-                                            ₹{bill.grandTotal.toLocaleString()}
+                                            ₹{(bill.grandTotal || bill.totalAmount || 0).toLocaleString()}
                                         </td>
                                         <td className="px-4 py-3 text-right font-medium text-red-600">
-                                            ₹{bill.amountDue.toLocaleString()}
+                                            ₹{(bill.amountDue || 0).toLocaleString()}
                                         </td>
                                         <td className="px-4 py-3">
                                             <span
@@ -479,7 +433,7 @@ export const VendorBills: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                     <Select
                         label="Vendor Name"
-                        options={MOCK_CONTACTS.filter(c => c.type === "vendor" || c.type === "both").map(c => ({
+                        options={contacts.filter((c: any) => c.type === "vendor" || c.contactType === "vendor" || c.type === "both" || c.contactType === "both").map((c: any) => ({
                             value: c.id,
                             label: c.name
                         }))}
@@ -525,16 +479,16 @@ export const VendorBills: React.FC = () => {
                                         <td className="p-2">{index + 1}</td>
                                         <td className="p-2">
                                             <Select
-                                                options={MOCK_PRODUCTS.map(p => ({
+                                                options={products.map((p: any) => ({
                                                     value: p.id,
                                                     label: p.name
                                                 }))}
                                                 value={watchLineItems[index]?.productId}
                                                 onValueChange={(val) => {
-                                                    const prod = MOCK_PRODUCTS.find(p => p.id === val);
+                                                    const prod = products.find((p: any) => p.id === val);
                                                     setValue(`lineItems.${index}.productId`, val);
                                                     if (prod) {
-                                                        setValue(`lineItems.${index}.unitPrice`, prod.purchasePrice);
+                                                        setValue(`lineItems.${index}.unitPrice`, (prod as any).purchasePrice || (prod as any).purchase_price || 0);
                                                     }
                                                 }}
                                             />
@@ -543,7 +497,7 @@ export const VendorBills: React.FC = () => {
                                             <Select
                                                 options={[
                                                     { value: "none", label: "None" },
-                                                    ...MOCK_ANALYTICAL_ACCOUNTS.map(a => ({
+                                                    ...analyticalAccounts.map((a: any) => ({
                                                         value: a.id,
                                                         label: a.name
                                                     }))
