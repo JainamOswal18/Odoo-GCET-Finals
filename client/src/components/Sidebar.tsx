@@ -79,6 +79,7 @@ const navItems: NavItem[] = [
         icon: <Settings className="w-5 h-5" />,
         adminOnly: true,
         children: [
+            { label: "General Settings", icon: <Settings className="w-4 h-4" />, href: "/settings" },
             { label: "Create User", icon: <UserPlus className="w-4 h-4" />, href: "/create-user" },
         ],
     },

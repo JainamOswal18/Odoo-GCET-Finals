@@ -15,3 +15,5 @@ export type { ToastType } from "./Toast";
 export { Modal, ModalFooter } from "./Modal";
 
 export { Select } from "./Select";
+
+export { Autocomplete } from "./Autocomplete";

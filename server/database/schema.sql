@@ -16,6 +16,53 @@ CREATE TABLE IF NOT EXISTS users (
     CHECK ((role = 'portal' AND contact_id IS NOT NULL) OR (role = 'admin' AND contact_id IS NULL))
 );
 
+-- Countries Table (for region lookups)
+CREATE TABLE IF NOT EXISTS countries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    iso2 VARCHAR(2) UNIQUE NOT NULL,
+    iso3 VARCHAR(3) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    phone_code VARCHAR(10) NOT NULL,
+    currency VARCHAR(10),
+    currency_symbol VARCHAR(10),
+    capital VARCHAR(255),
+    region VARCHAR(100),
+    subregion VARCHAR(100),
+    flag VARCHAR(10),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_countries_name ON countries(name);
+CREATE INDEX IF NOT EXISTS idx_countries_iso2 ON countries(iso2);
+
+-- States Table (for region lookups)
+CREATE TABLE IF NOT EXISTS states (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    country_id INTEGER NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    state_code VARCHAR(10),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (country_id) REFERENCES countries(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_states_country ON states(country_id);
+CREATE INDEX IF NOT EXISTS idx_states_name ON states(name);
+
+-- Cities Table (for region lookups)
+CREATE TABLE IF NOT EXISTS cities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    state_id INTEGER NOT NULL,
+    country_id INTEGER NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (state_id) REFERENCES states(id),
+    FOREIGN KEY (country_id) REFERENCES countries(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cities_state ON cities(state_id);
+CREATE INDEX IF NOT EXISTS idx_cities_country ON cities(country_id);
+CREATE INDEX IF NOT EXISTS idx_cities_name ON cities(name);
+
 -- Contacts Table
 CREATE TABLE IF NOT EXISTS contacts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,6 +74,9 @@ CREATE TABLE IF NOT EXISTS contacts (
     city VARCHAR(100),
     state VARCHAR(100),
     country VARCHAR(100),
+    country_id INTEGER,
+    state_id INTEGER,
+    city_id INTEGER,
     postal_code VARCHAR(20),
     tax_id VARCHAR(50),
     is_vendor BOOLEAN DEFAULT 0,
@@ -42,7 +92,10 @@ CREATE TABLE IF NOT EXISTS contacts (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     created_by INTEGER,
-    FOREIGN KEY (created_by) REFERENCES users(id)
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (country_id) REFERENCES countries(id),
+    FOREIGN KEY (state_id) REFERENCES states(id),
+    FOREIGN KEY (city_id) REFERENCES cities(id)
 );
 
 -- Products Table
