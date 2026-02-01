@@ -45,7 +45,15 @@ export const AutoAnalytical: React.FC = () => {
             ]);
             console.log('Models fetched:', modelsData);
             console.log('Analytical accounts fetched:', accountsData);
-            setModels(modelsData);
+            
+            // Map backend data to ensure proper field names
+            const mappedModels = modelsData.map((model: any) => ({
+                ...model,
+                analyticAccountName: model.analyticalAccountName || model.analytical_account_name,
+            }));
+            console.log('Mapped models:', mappedModels);
+            
+            setModels(mappedModels);
             setAnalyticalAccounts(accountsData);
         } catch (err: any) {
             console.error('Fetch error:', err);
@@ -129,6 +137,18 @@ export const AutoAnalytical: React.FC = () => {
                 </div>
 
                 <Card className="p-4">
+                    {_error && (
+                        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                            {_error}
+                        </div>
+                    )}
+                    
+                    {_loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="text-gray-500">Loading models...</div>
+                        </div>
+                    ) : (
+                        <>
                     <div className="flex items-center space-x-4 mb-6">
                         <div className="relative flex-1 max-w-sm">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -181,7 +201,14 @@ export const AutoAnalytical: React.FC = () => {
                                 ))}
                             </tbody>
                         </table>
+                        {filteredModels.length === 0 && (
+                            <div className="text-center py-8 text-gray-500">
+                                No models found. Click "New Model" to create one.
+                            </div>
+                        )}
                     </div>
+                    </>
+                    )}
                 </Card>
             </div>
         );
