@@ -117,6 +117,56 @@ class InvoiceController {
     }
   }
 
+  async update(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { customer_id, so_id, invoice_date, due_date, lines, notes, status } = req.body;
+
+      const invoice = await getQuery('SELECT * FROM invoices WHERE id = ?', [id]);
+      if (!invoice) {
+        return res.status(404).json({ error: 'Invoice not found' });
+      }
+
+      // Process lines with analytical accounts
+      const processedLines = await analyticalService.assignAnalyticalAccounts(
+        lines, { customer_id }
+      );
+
+      const totals = calculateTotals(processedLines);
+
+      // Update invoice
+      await runQuery(
+        `UPDATE invoices SET customer_id = ?, so_id = ?, invoice_date = ?, due_date = ?,
+         subtotal = ?, tax_amount = ?, total_amount = ?, amount_due = ?, notes = ?, status = ?,
+         updated_at = datetime('now')
+         WHERE id = ?`,
+        [customer_id, so_id || null, invoice_date, due_date, totals.subtotal,
+          totals.taxAmount, totals.totalAmount, totals.totalAmount, notes, status || 'draft', id]
+      );
+
+      // Delete existing lines
+      await runQuery('DELETE FROM invoice_lines WHERE invoice_id = ?', [id]);
+
+      // Insert new lines
+      for (const line of processedLines) {
+        await runQuery(
+          `INSERT INTO invoice_lines (invoice_id, product_id, description, quantity,
+           unit_price, tax_rate, subtotal, analytical_account_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [id, line.product_id, line.description, line.quantity,
+            line.unit_price, line.tax_rate || 0,
+            line.quantity * line.unit_price, line.analytical_account_id || null]
+        );
+      }
+
+      const updatedInvoice = await getQuery('SELECT * FROM invoices WHERE id = ?', [id]);
+
+      res.json({ message: 'Invoice updated successfully', invoice: updatedInvoice });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async post(req, res, next) {
     try {
       const { id } = req.params;

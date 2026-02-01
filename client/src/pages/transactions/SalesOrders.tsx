@@ -29,6 +29,7 @@ export const SalesOrders: React.FC = () => {
     const [orders, setOrders] = useState<SalesOrder[]>([]);
     const [contacts, setContacts] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [status, setStatus] = useState<"draft" | "confirmed" | "done" | "cancelled">("draft");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -105,18 +106,51 @@ export const SalesOrders: React.FC = () => {
                 expected_date: data.expectedDate || null,
                 status: status,
                 notes: data.notes || null,
-                line_items: lineItemsPayload,
+                lines: lineItemsPayload,
             };
 
-            await salesOrdersApi.create(payload);
+            if (editingId) {
+                await salesOrdersApi.update(editingId, payload);
+            } else {
+                await salesOrdersApi.create(payload);
+            }
+
             await fetchData();
             setView("list");
             reset();
+            setEditingId(null);
         } catch (err: any) {
             setError(err.message || 'Failed to save sales order');
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleEdit = (order: SalesOrder) => {
+        setEditingId(order.id);
+        setStatus(order.status);
+        reset({
+            customerId: order.customerId,
+            orderDate: order.orderDate,
+            expectedDate: order.expectedDate,
+            lineItems: order.lineItems.map(item => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+            })),
+            notes: order.notes,
+        });
+        setView("form");
+    };
+
+    const handleNew = () => {
+        setEditingId(null);
+        setStatus("draft");
+        reset({
+            orderDate: new Date().toISOString().split('T')[0],
+            lineItems: [{ productId: "", quantity: 1, unitPrice: 0 }],
+        });
+        setView("form");
     };
 
     const handleConfirm = () => {
@@ -147,7 +181,7 @@ export const SalesOrders: React.FC = () => {
                         <h1 className="text-2xl font-bold text-gray-900">Sales Orders</h1>
                         <p className="text-gray-500">Manage customer sales orders</p>
                     </div>
-                    <Button onClick={() => setView("form")} leftIcon={<Plus className="w-4 h-4" />}>
+                    <Button onClick={handleNew} leftIcon={<Plus className="w-4 h-4" />}>
                         New SO
                     </Button>
                 </div>
@@ -167,7 +201,11 @@ export const SalesOrders: React.FC = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {orders.map((so) => (
-                                    <tr key={so.id} className="hover:bg-gray-50">
+                                    <tr 
+                                        key={so.id} 
+                                        className="hover:bg-gray-50 cursor-pointer"
+                                        onClick={() => handleEdit(so)}
+                                    >
                                         <td className="px-4 py-3 font-medium text-indigo-600">{so.orderNumber || so.soNumber}</td>
                                         <td className="px-4 py-3">{so.customerName}</td>
                                         <td className="px-4 py-3">{new Date(so.orderDate).toLocaleDateString()}</td>

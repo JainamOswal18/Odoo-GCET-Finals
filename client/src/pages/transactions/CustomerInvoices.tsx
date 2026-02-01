@@ -1,10 +1,11 @@
-import React, { useState } from "react";
-import { Plus, Search, Filter, Home, ArrowLeft, AlertTriangle } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, Search, Filter, Home, ArrowLeft, AlertTriangle, Loader2 } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Card, Select, Badge } from "@/components/ui";
-import { MOCK_CONTACTS, MOCK_PRODUCTS, MOCK_ANALYTICAL_ACCOUNTS } from "@/lib/mock";
+import { invoicesApi, contactsApi, productsApi, analyticalAccountsApi } from "@/lib/api";
+import type { CustomerInvoice } from "@/lib/types";
 
 const lineItemSchema = z.object({
     productId: z.string().min(1, "Product is required"),
@@ -25,89 +26,44 @@ const invoiceSchema = z.object({
 
 type InvoiceFormData = z.infer<typeof invoiceSchema>;
 
-type PaymentStatus = "paid" | "partial" | "unpaid";
-
-interface CustomerInvoice {
-    id: string;
-    invoiceNumber: string;
-    customerId: string;
-    customerName: string;
-    invoiceDate: string;
-    dueDate?: string;
-    status: "draft" | "confirmed" | "done" | "cancelled";
-    paymentStatus: PaymentStatus;
-    lineItems: Array<{
-        id: string;
-        productId: string;
-        productName: string;
-        quantity: number;
-        unitPrice: number;
-        taxRate: number;
-        taxAmount: number;
-        subtotal: number;
-        total: number;
-        analyticalAccountId?: string;
-        analyticalAccountName?: string;
-    }>;
-    subtotal: number;
-    taxTotal: number;
-    grandTotal: number;
-    amountPaid: number;
-    amountDue: number;
-    paidViaCash: number;
-    paidViaBank: number;
-    salesOrderId?: string;
-    salesOrderNumber?: string;
-    createdAt: string;
-    updatedAt: string;
-}
-
-const MOCK_INVOICES: CustomerInvoice[] = [
-    {
-        id: "1",
-        invoiceNumber: "INV/2025/0001",
-        customerId: "1",
-        customerName: "John Doe",
-        invoiceDate: "2026-01-25",
-        dueDate: "2026-02-25",
-        status: "confirmed",
-        paymentStatus: "paid",
-        salesOrderId: "1",
-        salesOrderNumber: "SO0001",
-        lineItems: [
-            {
-                id: "1",
-                productId: "1",
-                productName: "Table",
-                quantity: 6,
-                unitPrice: 3500,
-                taxRate: 18,
-                taxAmount: 3780,
-                subtotal: 21000,
-                total: 24780,
-                analyticalAccountId: "2",
-                analyticalAccountName: "Deepawali",
-            },
-        ],
-        subtotal: 21000,
-        taxTotal: 3780,
-        grandTotal: 24780,
-        amountPaid: 24780,
-        amountDue: 0,
-        paidViaCash: 12390,
-        paidViaBank: 12390,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    },
-];
-
 export const CustomerInvoices: React.FC = () => {
     const [view, setView] = useState<"list" | "form">("list");
-    const [invoices, setInvoices] = useState<CustomerInvoice[]>(MOCK_INVOICES);
+    const [invoices, setInvoices] = useState<CustomerInvoice[]>([]);
+    const [contacts, setContacts] = useState<any[]>([]);
+    const [products, setProducts] = useState<any[]>([]);
+    const [analyticalAccounts, setAnalyticalAccounts] = useState<any[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [status, setStatus] = useState<"draft" | "confirmed" | "done" | "cancelled">("draft");
     const [showBudgetWarning, setShowBudgetWarning] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const [invoicesData, contactsData, productsData, accountsData] = await Promise.all([
+                invoicesApi.getAll(),
+                contactsApi.getAll(),
+                productsApi.getAll(),
+                analyticalAccountsApi.getAll()
+            ]);
+            setInvoices(invoicesData as CustomerInvoice[]);
+            setContacts(contactsData);
+            setProducts(productsData);
+            setAnalyticalAccounts(accountsData);
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch data');
+            console.error('Error fetching customer invoices data:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const {
         register,
@@ -175,90 +131,43 @@ export const CustomerInvoices: React.FC = () => {
         });
     };
 
-    const onSubmit = (data: InvoiceFormData) => {
-        const customer = MOCK_CONTACTS.find(c => c.id === data.customerId);
+    const onSubmit = async (data: InvoiceFormData) => {
+        try {
+            setLoading(true);
+            setError(null);
 
-        if (editingId) {
-            setInvoices(invoices.map(inv =>
-                inv.id === editingId
-                    ? {
-                        ...inv,
-                        customerId: data.customerId,
-                        customerName: customer?.name || "",
-                        invoiceDate: data.invoiceDate,
-                        dueDate: data.dueDate,
-                        status,
-                        lineItems: data.lineItems.map((item, idx) => {
-                            const product = MOCK_PRODUCTS.find(p => p.id === item.productId);
-                            const analytical = MOCK_ANALYTICAL_ACCOUNTS.find(a => a.id === item.analyticalAccountId);
-                            const subtotal = item.quantity * item.unitPrice;
-                            const taxAmount = subtotal * 0.18;
-                            return {
-                                id: `${idx + 1}`,
-                                productId: item.productId,
-                                productName: product?.name || "",
-                                quantity: item.quantity,
-                                unitPrice: item.unitPrice,
-                                taxRate: 18,
-                                taxAmount,
-                                subtotal,
-                                total: subtotal + taxAmount,
-                                analyticalAccountId: item.analyticalAccountId,
-                                analyticalAccountName: analytical?.name,
-                            };
-                        }),
-                        subtotal: data.lineItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0),
-                        taxTotal: data.lineItems.reduce((sum, item) => sum + ((item.quantity * item.unitPrice) * 0.18), 0),
-                        grandTotal,
-                        amountDue: inv.grandTotal - inv.amountPaid,
-                        updatedAt: new Date().toISOString(),
-                    }
-                    : inv
-            ));
-        } else {
-            const newInvoice: CustomerInvoice = {
-                id: `${invoices.length + 1}`,
-                invoiceNumber: `INV/2025/${String(invoices.length + 1).padStart(4, '0')}`,
-                customerId: data.customerId,
-                customerName: customer?.name || "",
-                invoiceDate: data.invoiceDate,
-                dueDate: data.dueDate,
-                status,
-                paymentStatus: "unpaid",
-                salesOrderId: data.salesOrderId,
-                lineItems: data.lineItems.map((item, idx) => {
-                    const product = MOCK_PRODUCTS.find(p => p.id === item.productId);
-                    const analytical = MOCK_ANALYTICAL_ACCOUNTS.find(a => a.id === item.analyticalAccountId);
-                    const subtotal = item.quantity * item.unitPrice;
-                    const taxAmount = subtotal * 0.18;
-                    return {
-                        id: `${idx + 1}`,
-                        productId: item.productId,
-                        productName: product?.name || "",
-                        quantity: item.quantity,
-                        unitPrice: item.unitPrice,
-                        taxRate: 18,
-                        taxAmount,
-                        subtotal,
-                        total: subtotal + taxAmount,
-                        analyticalAccountId: item.analyticalAccountId,
-                        analyticalAccountName: analytical?.name,
-                    };
-                }),
-                subtotal: data.lineItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0),
-                taxTotal: data.lineItems.reduce((sum, item) => sum + ((item.quantity * item.unitPrice) * 0.18), 0),
-                grandTotal,
-                amountPaid: 0,
-                amountDue: grandTotal,
-                paidViaCash: 0,
-                paidViaBank: 0,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+            const lineItemsPayload = data.lineItems.map((item) => ({
+                product_id: item.productId,
+                quantity: item.quantity,
+                unit_price: item.unitPrice,
+                analytical_account_id: item.analyticalAccountId || null,
+            }));
+
+            const payload = {
+                customer_id: data.customerId,
+                invoice_date: data.invoiceDate,
+                due_date: data.dueDate,
+                sales_order_id: data.salesOrderId || null,
+                lines: lineItemsPayload,
+                notes: data.notes,
             };
-            setInvoices([...invoices, newInvoice]);
-        }
 
-        setView("list");
+            if (editingId) {
+                await invoicesApi.update(editingId, payload);
+            } else {
+                await invoicesApi.create(payload);
+            }
+
+            await fetchData();
+            setView("list");
+            reset();
+            setEditingId(null);
+        } catch (err: any) {
+            setError(err.message || 'Failed to save invoice');
+            console.error('Error saving invoice:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleConfirm = async () => {
@@ -291,6 +200,11 @@ export const CustomerInvoices: React.FC = () => {
     if (view === "list") {
         return (
             <div className="space-y-6">
+                {error && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                        {error}
+                    </div>
+                )}
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Customer Invoices</h1>
@@ -318,6 +232,11 @@ export const CustomerInvoices: React.FC = () => {
                         </Button>
                     </div>
 
+                    {loading && invoices.length === 0 ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                        </div>
+                    ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-gray-50 text-gray-700 font-medium">
@@ -350,10 +269,10 @@ export const CustomerInvoices: React.FC = () => {
                                             {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : '-'}
                                         </td>
                                         <td className="px-4 py-3 text-right font-medium text-gray-900">
-                                            ₹{invoice.grandTotal.toLocaleString()}
+                                            ₹{(invoice.grandTotal || 0).toLocaleString()}
                                         </td>
                                         <td className="px-4 py-3 text-right font-medium text-red-600">
-                                            ₹{invoice.amountDue.toLocaleString()}
+                                            ₹{(invoice.amountDue || 0).toLocaleString()}
                                         </td>
                                         <td className="px-4 py-3">
                                             <span
@@ -387,6 +306,7 @@ export const CustomerInvoices: React.FC = () => {
                             </tbody>
                         </table>
                     </div>
+                    )}
                 </Card>
             </div>
         );
@@ -479,7 +399,7 @@ export const CustomerInvoices: React.FC = () => {
                                             Customer
                                         </label>
                                         <Select
-                                            options={MOCK_CONTACTS.filter(c => c.type === "customer").map(c => ({
+                                            options={contacts.filter((c: any) => c.type === "customer" || c.contactType === "customer" || c.type === "both" || c.contactType === "both").map((c: any) => ({
                                                 value: c.id,
                                                 label: c.name
                                             }))}
@@ -575,20 +495,6 @@ export const CustomerInvoices: React.FC = () => {
 
                         {editingId && invoices.find(i => i.id === editingId) && (
                             <div className="border-t border-b border-gray-200 py-4 space-y-2">
-                                <div className="flex justify-end space-x-8">
-                                    <div className="text-right">
-                                        <p className="text-sm text-gray-600">Paid Via Cash</p>
-                                        <p className="text-lg font-semibold text-green-600">
-                                            ₹{invoices.find(i => i.id === editingId)?.paidViaCash.toLocaleString()}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-sm text-gray-600">Paid Via Bank</p>
-                                        <p className="text-lg font-semibold text-green-600">
-                                            ₹{invoices.find(i => i.id === editingId)?.paidViaBank.toLocaleString()}
-                                        </p>
-                                    </div>
-                                </div>
                                 <div className="flex justify-end">
                                     <div className="text-right border-t-2 border-gray-300 pt-2">
                                         <p className="text-sm text-gray-600">Amount Due</p>
@@ -649,13 +555,13 @@ export const CustomerInvoices: React.FC = () => {
                                                 <td className="p-2">{index + 1}</td>
                                                 <td className="p-2">
                                                     <Select
-                                                        options={MOCK_PRODUCTS.map(p => ({
+                                                        options={products.map((p: any) => ({
                                                             value: p.id,
                                                             label: p.name
                                                         }))}
                                                         value={watchLineItems[index]?.productId}
                                                         onValueChange={(val) => {
-                                                            const prod = MOCK_PRODUCTS.find(p => p.id === val);
+                                                            const prod = products.find((p: any) => p.id === val);
                                                             setValue(`lineItems.${index}.productId`, val);
                                                             if (prod) {
                                                                 setValue(`lineItems.${index}.unitPrice`, prod.salesPrice ?? prod.salePrice ?? 0);
@@ -668,7 +574,7 @@ export const CustomerInvoices: React.FC = () => {
                                                     <Select
                                                         options={[
                                                             { value: "none", label: "None" },
-                                                            ...MOCK_ANALYTICAL_ACCOUNTS.map(a => ({
+                                                            ...analyticalAccounts.map((a: any) => ({
                                                                 value: a.id,
                                                                 label: a.name
                                                             }))
