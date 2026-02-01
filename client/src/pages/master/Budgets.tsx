@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Save, Archive, Eye, Link2, Trash2 } from "lucide-react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { Plus, Save, Archive, Link2, Trash2 } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button, Input, Card, Select } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { Autocomplete } from "@/components/ui/Autocomplete";
 import { BudgetPieChart } from "@/components/ui/BudgetPieChart";
 import { MiniPieChart } from "@/components/ui/MiniPieChart";
 import { budgetsApi, analyticalAccountsApi } from "@/lib/api";
@@ -13,7 +14,7 @@ import type { Budget, AnalyticalAccount } from "@/lib/types";
 const budgetLineSchema = z.object({
     analyticName: z.string().min(1, "Analytic name is required"),
     analyticId: z.string().optional(),
-    type: z.enum(["income", "expense"], { required_error: "Type is required" }),
+    type: z.enum(["income", "expense"], { message: "Type is required" }),
     budgetedAmount: z.number().min(0, "Amount must be positive"),
     achievedAmount: z.number().optional(),
 });
@@ -43,7 +44,7 @@ export const Budgets: React.FC = () => {
     const [budgets, setBudgets] = useState<Budget[]>([]);
     const [analyticalAccounts, setAnalyticalAccounts] = useState<AnalyticalAccount[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [searchTerm, setSearchTerm] = useState("");
+    const [searchTerm] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     
@@ -61,68 +62,6 @@ export const Budgets: React.FC = () => {
     // Pie Chart Modal State
     const [pieChartOpen, setPieChartOpen] = useState(false);
     const [selectedBudgetForChart, setSelectedBudgetForChart] = useState<Budget | null>(null);
-
-    // Hardcoded mock budgets for demonstration
-    const mockBudgets: Budget[] = [
-        {
-            id: "mock-1",
-            name: "Q1 2026 Budget",
-            periodStart: "2026-01-01",
-            periodEnd: "2026-03-31",
-            status: "confirmed",
-            plannedAmount: 680000,
-            actualAmount: 237950,
-            remainingBalance: 442050,
-            active: 1,
-        } as Budget,
-        {
-            id: "mock-2", 
-            name: "Deepawali 2025",
-            periodStart: "2025-10-01",
-            periodEnd: "2025-11-30",
-            status: "revised",
-            plannedAmount: 500000,
-            actualAmount: 425000,
-            remainingBalance: 75000,
-            active: 1,
-            revisedBudgetId: "mock-3",
-        } as Budget,
-        {
-            id: "mock-3",
-            name: "Deepawali 2025 (Rev on 15102025)",
-            periodStart: "2025-10-01",
-            periodEnd: "2025-11-30",
-            status: "confirmed",
-            plannedAmount: 550000,
-            actualAmount: 478500,
-            remainingBalance: 71500,
-            active: 1,
-            originalBudgetId: "mock-2",
-            originalBudgetName: "Deepawali 2025",
-        } as Budget,
-        {
-            id: "mock-4",
-            name: "Marriage Season 2026",
-            periodStart: "2026-02-01",
-            periodEnd: "2026-04-30",
-            status: "draft",
-            plannedAmount: 350000,
-            actualAmount: 85000,
-            remainingBalance: 265000,
-            active: 1,
-        } as Budget,
-        {
-            id: "mock-5",
-            name: "Furniture Expo 2026",
-            periodStart: "2026-03-15",
-            periodEnd: "2026-04-15",
-            status: "confirmed",
-            plannedAmount: 280000,
-            actualAmount: 156000,
-            remainingBalance: 124000,
-            active: 1,
-        } as Budget,
-    ];
 
     // Initialize component - reset to list view and fetch data
     useEffect(() => {
@@ -143,39 +82,36 @@ export const Budgets: React.FC = () => {
             console.log('Budgets fetched:', budgetsData);
             console.log('Analytical accounts fetched:', accountsData);
             
-            // Merge API data with mock values for demo (ensure pie charts have data)
-            if (budgetsData && budgetsData.length > 0) {
-                // Enhance API budgets with mock values for demo if they don't have them
-                const enhancedBudgets = budgetsData.map((budget: Budget) => {
-                    // If budget doesn't have actual amounts, add mock values
-                    if (!budget.actualAmount && !budget.remainingBalance) {
-                        const mockPlanned = budget.plannedAmount || budget.budgetedAmount || 500000;
-                        const mockAchieved = Math.floor(mockPlanned * (0.2 + Math.random() * 0.6)); // 20-80% achieved
-                        return {
-                            ...budget,
-                            plannedAmount: mockPlanned,
-                            actualAmount: mockAchieved,
-                            remainingBalance: mockPlanned - mockAchieved,
-                        };
-                    }
-                    return budget;
-                });
-                // Add mock budgets for demonstration
-                const allBudgets = [...enhancedBudgets, ...mockBudgets.filter(m => 
-                    !enhancedBudgets.some((e: Budget) => e.name === m.name)
-                )];
-                setBudgets(allBudgets);
-            } else {
-                console.log('Using mock budgets data');
-                setBudgets(mockBudgets);
-            }
+            // Map backend data to frontend format
+            // Note: Keys are already camelCase due to transformKeysToCamelCase
+            const mappedBudgets = budgetsData.map((budget: any) => {
+                console.log('Mapping budget:', budget);
+                const plannedAmount = budget.totalBudgeted || budget.total_budgeted || 0;
+                const actualAmount = budget.totalActual || budget.total_actual || 0;
+                return {
+                    id: String(budget.id),
+                    name: budget.name,
+                    periodStart: budget.periodStart || budget.period_start,
+                    periodEnd: budget.periodEnd || budget.period_end,
+                    status: budget.status,
+                    plannedAmount: plannedAmount,
+                    actualAmount: actualAmount,
+                    remainingBalance: plannedAmount - actualAmount,
+                    achievementPercentage: budget.achievementPercentage || budget.achievement_percentage || 0,
+                    active: budget.active,
+                    lines: budget.lines || [],
+                    createdBy: budget.createdByName || budget.created_by_name,
+                    createdAt: budget.createdAt || budget.created_at,
+                };
+            });
+            
+            console.log('Mapped budgets:', mappedBudgets);
+            setBudgets(mappedBudgets);
             setAnalyticalAccounts(accountsData);
         } catch (err: any) {
             console.error('Error fetching data:', err);
-            // Use mock data on error
-            console.log('API error, using mock budgets data');
-            setBudgets(mockBudgets);
-            setError(null); // Clear error since we have mock data
+            setError(err.message || 'Failed to fetch data');
+            setBudgets([]);
         } finally {
             setLoading(false);
         }
@@ -293,24 +229,18 @@ export const Budgets: React.FC = () => {
             setLoading(true);
             setError(null);
 
-            const totals = calculateTotals();
-
-            // Prepare data with budget lines and calculated totals
+            // Prepare data with budget lines (transform to backend format)
             const budgetData = {
                 name: data.name,
-                periodStart: data.periodStart,
-                periodEnd: data.periodEnd,
+                period_start: data.periodStart,
+                period_end: data.periodEnd,
                 status: formStatus,
-                plannedAmount: totals.totalBudget,
-                actualAmount: totals.totalAchieved,
-                remainingBalance: totals.balance,
-                lines: budgetLines.map(line => ({
-                    analyticName: line.analyticName,
-                    analyticId: line.analyticId,
-                    type: line.type,
-                    budgetedAmount: line.budgetedAmount,
-                    achievedAmount: line.achievedAmount || 0
-                })),
+                lines: budgetLines
+                    .filter(line => line.analyticId) // Only include lines with valid analytical account
+                    .map(line => ({
+                        analytical_account_id: line.analyticId,
+                        budgeted_amount: line.budgetedAmount,
+                    })),
             };
 
             console.log('Saving budget:', budgetData);
@@ -357,70 +287,61 @@ export const Budgets: React.FC = () => {
         }
     };
 
-    const handleEdit = (budget: Budget) => {
-        setEditingId(budget.id);
-        setFormStatus((budget.status as BudgetStatus) || "confirmed");
-        
-        // Handle revision links
-        setRevisedBudgetId(budget.revisedBudgetId || null);
-        setOriginalBudgetId(budget.originalBudgetId || null);
-        setOriginalBudgetName(budget.originalBudgetName || null);
-        
-        reset({
-            name: budget.name,
-            periodStart: budget.periodStart,
-            periodEnd: budget.periodEnd,
-        });
-        
-        // TODO: Load actual budget lines from API
-        // For now, create sample lines based on the budget
-        setBudgetLines([
-            { 
-                id: "1", 
-                analyticName: budget.analyticalAccountName || "Deepawali", 
-                analyticId: budget.analyticalAccountId || "",
-                type: "income", 
-                budgetedAmount: budget.plannedAmount || budget.budgetedAmount || 400000, 
-                achievedAmount: budget.actualAmount || 21600 
-            },
-            { 
-                id: "2", 
-                analyticName: "Marriage Session 2026", 
-                type: "income", 
-                budgetedAmount: 0, 
-                achievedAmount: 0 
-            },
-            { 
-                id: "3", 
-                analyticName: "Furniture Expo 2026", 
-                type: "income", 
-                budgetedAmount: 0, 
-                achievedAmount: 0 
-            },
-            { 
-                id: "4", 
-                analyticName: "Deepawali", 
-                type: "expense", 
-                budgetedAmount: 280000, 
-                achievedAmount: 16350 
-            },
-            { 
-                id: "5", 
-                analyticName: "Marriage Session 2026", 
-                type: "expense", 
-                budgetedAmount: 0, 
-                achievedAmount: 0 
-            },
-            { 
-                id: "6", 
-                analyticName: "Furniture Expo 2026", 
-                type: "expense", 
-                budgetedAmount: 0, 
-                achievedAmount: 0 
-            },
-        ]);
-        
-        setView("form");
+    const handleEdit = async (budget: Budget) => {
+        try {
+            setLoading(true);
+            setEditingId(budget.id);
+            setFormStatus((budget.status as BudgetStatus) || "confirmed");
+            
+            // Handle revision links
+            setRevisedBudgetId(budget.revisedBudgetId || null);
+            setOriginalBudgetId(budget.originalBudgetId || null);
+            setOriginalBudgetName(budget.originalBudgetName || null);
+            
+            reset({
+                name: budget.name,
+                periodStart: budget.periodStart,
+                periodEnd: budget.periodEnd,
+            });
+            
+            // Load budget lines from API
+            const budgetDetails: any = await budgetsApi.getById(budget.id);
+            console.log('Budget details:', budgetDetails);
+            console.log('Budget lines from API:', budgetDetails.lines);
+            
+            if (budgetDetails.lines && budgetDetails.lines.length > 0) {
+                const mappedLines = budgetDetails.lines.map((line: any, index: number) => {
+                    console.log('Mapping line:', line);
+                    // Handle both camelCase (from transform) and snake_case (fallback)
+                    const analyticName = line.accountName || line.account_name || line.name || line.analyticalAccountName || '';
+                    const code = line.code || '';
+                    const displayName = code ? `${code} - ${analyticName}` : analyticName;
+                    
+                    return {
+                        id: String(index + 1),
+                        analyticName: displayName,
+                        analyticId: String(line.analyticalAccountId || line.analytical_account_id || ''),
+                        type: "income" as const, // Default to income, can be enhanced later
+                        budgetedAmount: line.budgetedAmount || line.budgeted_amount || 0,
+                        achievedAmount: line.actualAmount || line.actual_amount || 0,
+                    };
+                });
+                console.log('Mapped budget lines:', mappedLines);
+                setBudgetLines(mappedLines);
+            } else {
+                // Create one empty line if no lines exist
+                setBudgetLines([
+                    { id: "1", analyticName: "", analyticId: "", type: "income", budgetedAmount: 0, achievedAmount: 0 }
+                ]);
+            }
+            
+            setView("form");
+        } catch (err: any) {
+            console.error('Error loading budget:', err);
+            setError(err.message || 'Failed to load budget');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleNew = () => {
@@ -476,7 +397,7 @@ export const Budgets: React.FC = () => {
             if (editingId) {
                 await budgetsApi.update(editingId, budgetData);
             } else {
-                const created = await budgetsApi.create(budgetData);
+                const created: any = await budgetsApi.create(budgetData);
                 setEditingId(created.id);
             }
             
@@ -535,7 +456,7 @@ export const Budgets: React.FC = () => {
                 })),
             };
             
-            const newRevision = await budgetsApi.create(revisionData);
+            const newRevision: any = await budgetsApi.create(revisionData);
             
             // Update original budget with link to new revision
             await budgetsApi.update(originalId, { revisedBudgetId: newRevision.id });
@@ -1010,13 +931,24 @@ export const Budgets: React.FC = () => {
                                                 {formStatus === "confirmed" || formStatus === "revised" ? (
                                                     <span className="text-gray-800">{line.analyticName || '-'}</span>
                                                 ) : (
-                                                    <input
-                                                        type="text"
+                                                    <Autocomplete
+                                                        placeholder="Search analytical account..."
                                                         value={line.analyticName}
-                                                        onChange={(e) => updateBudgetLine(line.id, 'analyticName', e.target.value)}
-                                                        placeholder="Enter analytic name"
-                                                        className={`w-full px-2 py-1 border-b ${line.analyticName ? 'border-gray-300' : 'border-red-300'} hover:border-gray-400 focus:border-indigo-500 focus:outline-none bg-transparent text-gray-800`}
-                                                        required
+                                                        onChange={(value, option) => {
+                                                            updateBudgetLine(line.id, 'analyticName', value);
+                                                            if (option) {
+                                                                updateBudgetLine(line.id, 'analyticId', String(option.id));
+                                                            }
+                                                        }}
+                                                        onSearch={async (search) => {
+                                                            const accounts = await analyticalAccountsApi.getAll({ search });
+                                                            return accounts.map(a => ({
+                                                                id: a.id,
+                                                                label: `${a.code} - ${a.name}`,
+                                                                value: a.name,
+                                                            }));
+                                                        }}
+                                                        className="w-full"
                                                     />
                                                 )}
                                             </td>
