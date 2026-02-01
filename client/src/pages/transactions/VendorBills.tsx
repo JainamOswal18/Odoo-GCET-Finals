@@ -491,7 +491,7 @@ export const VendorBills: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                     <Select
                         label="Vendor Name"
-                        options={contacts.map((c: Contact) => ({
+                        options={contacts.map((c: { id: string | number; name: string }) => ({
                             value: String(c.id),
                             label: c.name
                         }))}
