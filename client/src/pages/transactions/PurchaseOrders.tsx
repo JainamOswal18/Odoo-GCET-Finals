@@ -420,7 +420,7 @@ export const PurchaseOrders: React.FC = () => {
                     <Select
                         label="Vendor Name"
                         options={contacts.filter(c => (c.type === "vendor" || c.type === "both") || (c.contactType === "vendor" || c.contactType === "both")).map(c => ({
-                            value: c.id,
+                            value: String(c.id),
                             label: c.name
                         }))}
                         value={watch("vendorId")}
