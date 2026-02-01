@@ -25,6 +25,9 @@ import { Payments } from "@/pages/transactions/Payments";
 // Budget Monitoring Pages
 import { BudgetOverview, BudgetVsActuals, RevisionHistory } from "@/pages/budget";
 
+// Settings Page
+import { Settings } from "@/pages/settings";
+
 // Portal Pages
 import { PortalDashboard } from "@/pages/portal/PortalDashboard";
 import { MyInvoices } from "@/pages/portal/MyInvoices";
@@ -42,9 +45,6 @@ const Placeholder = ({ title }: { title: string }) => (
     </div>
   </div>
 );
-
-// Settings placeholder
-const Settings = () => <Placeholder title="Settings" />;
 
 function App() {
   return (
