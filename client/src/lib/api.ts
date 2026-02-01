@@ -121,6 +121,18 @@ export const contactsApi = {
     });
     return handleApiResponse(response);
   },
+  archive: async (id: string) => {
+    const response = await apiRequest(`${API_ENDPOINTS.contacts}/${id}/archive`, {
+      method: 'PATCH',
+    });
+    return handleApiResponse(response);
+  },
+  unarchive: async (id: string) => {
+    const response = await apiRequest(`${API_ENDPOINTS.contacts}/${id}/unarchive`, {
+      method: 'PATCH',
+    });
+    return handleApiResponse(response);
+  },
 };
 
 // ============================================================================
