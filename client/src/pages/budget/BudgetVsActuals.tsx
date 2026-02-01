@@ -16,7 +16,7 @@ interface ComparisonData {
 
 export default function BudgetVsActuals() {
     const [selectedAccount, setSelectedAccount] = useState<string>("all");
-    const [selectedPeriod, setSelectedPeriod] = useState("2024");
+    const [selectedBudgetId, setSelectedBudgetId] = useState<number | null>(null);
     const [viewMode, setViewMode] = useState<"table" | "chart">("table");
     const [budgets, setBudgets] = useState<any[]>([]);
     const [analyticalAccounts, setAnalyticalAccounts] = useState<any[]>([]);
@@ -37,6 +37,11 @@ export default function BudgetVsActuals() {
             ]);
             setBudgets(budgetsData);
             setAnalyticalAccounts(accountsData);
+            // Auto-select the first active/confirmed budget
+            if (budgetsData.length > 0) {
+                const activeBudget = budgetsData.find((b: any) => b.status === 'active' || b.status === 'confirmed');
+                setSelectedBudgetId(activeBudget?.id || budgetsData[0].id);
+            }
         } catch (err: any) {
             setError(err.message || 'Failed to fetch data');
         } finally {
@@ -44,12 +49,16 @@ export default function BudgetVsActuals() {
         }
     };
 
-    // Prepare comparison data
+    // Prepare comparison data from selected budget's lines
     const comparisonData: ComparisonData[] = useMemo(() => {
-        return budgets.map((budget) => {
-            const account = analyticalAccounts.find((a) => a.id === budget.analyticalAccountId);
-            const actual = budget.actualAmount || 0;
-            const planned = budget.plannedAmount || 1;
+        const selectedBudget = budgets.find(b => b.id === selectedBudgetId);
+        if (!selectedBudget || !selectedBudget.lines) {
+            return [];
+        }
+
+        return selectedBudget.lines.map((line: any) => {
+            const actual = line.actualAmount || 0;
+            const planned = line.budgetedAmount || 1;
             const variance = actual - planned;
             const variancePercent = ((variance / planned) * 100);
 
@@ -58,9 +67,9 @@ export default function BudgetVsActuals() {
             else if (variancePercent < -10) status = "under";
 
             return {
-                id: budget.id,
-                account: account?.name || "Unknown",
-                period: `${budget.periodStart} to ${budget.periodEnd}`,
+                id: line.id,
+                account: line.analyticalAccountName || "Unknown",
+                period: `${selectedBudget.periodStart} to ${selectedBudget.periodEnd}`,
                 budgeted: planned,
                 actual,
                 variance,
@@ -68,7 +77,7 @@ export default function BudgetVsActuals() {
                 status,
             };
         });
-    }, [budgets, analyticalAccounts]);
+    }, [budgets, selectedBudgetId]);
 
     // Filter data
     const filteredData = useMemo(() => {
@@ -153,14 +162,15 @@ export default function BudgetVsActuals() {
                         options={accountOptions}
                     />
                     <select
-                        value={selectedPeriod}
-                        onChange={(e) => setSelectedPeriod(e.target.value)}
+                        value={selectedBudgetId || ''}
+                        onChange={(e) => setSelectedBudgetId(Number(e.target.value))}
                         className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     >
-                        <option value="2024">FY 2024-25</option>
-                        <option value="2023">FY 2023-24</option>
-                        <option value="Q4-2024">Q4 2024</option>
-                        <option value="Q3-2024">Q3 2024</option>
+                        {budgets.map((budget) => (
+                            <option key={budget.id} value={budget.id}>
+                                {budget.name}
+                            </option>
+                        ))}
                     </select>
                     <div className="ml-auto flex items-center gap-2">
                         <button

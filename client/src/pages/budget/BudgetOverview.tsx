@@ -21,7 +21,7 @@ interface BudgetAlert {
 }
 
 export default function BudgetOverview() {
-    const [selectedPeriod, setSelectedPeriod] = useState("2024");
+    const [selectedBudgetId, setSelectedBudgetId] = useState<number | null>(null);
     const [budgets, setBudgets] = useState<any[]>([]);
     const [analyticalAccounts, setAnalyticalAccounts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -41,6 +41,11 @@ export default function BudgetOverview() {
             ]);
             setBudgets(budgetsData);
             setAnalyticalAccounts(accountsData);
+            // Auto-select the first active/confirmed budget
+            if (budgetsData.length > 0) {
+                const activeBudget = budgetsData.find((b: any) => b.status === 'active' || b.status === 'confirmed');
+                setSelectedBudgetId(activeBudget?.id || budgetsData[0].id);
+            }
         } catch (err: any) {
             setError(err.message || 'Failed to fetch budget data');
         } finally {
@@ -48,10 +53,15 @@ export default function BudgetOverview() {
         }
     };
 
-    // Calculate metrics
+    // Calculate metrics for selected budget only
     const metrics = useMemo(() => {
-        const totalBudget = budgets.reduce((sum: number, b) => sum + (b.plannedAmount || 0), 0);
-        const totalSpent = budgets.reduce((sum: number, b) => sum + (b.actualAmount || 0), 0);
+        const selectedBudget = budgets.find(b => b.id === selectedBudgetId);
+        if (!selectedBudget) {
+            return { totalBudget: 0, totalSpent: 0, utilization: 0, remaining: 0 };
+        }
+
+        const totalBudget = selectedBudget.totalBudgeted || 0;
+        const totalSpent = selectedBudget.totalActual || 0;
         const utilization = totalBudget > 0 ? ((totalSpent / totalBudget) * 100).toFixed(1) : '0';
         const remaining = totalBudget - totalSpent;
 
@@ -61,18 +71,26 @@ export default function BudgetOverview() {
             utilization: parseFloat(utilization),
             remaining,
         };
-    }, [budgets]);
+    }, [budgets, selectedBudgetId]);
 
-    // Prepare budget distribution data
+    // Prepare budget distribution data by analytical account for selected budget only
     const budgetDistribution = useMemo(() => {
-        const accountMap = new Map<string, { budget: number; spent: number }>();
+        const selectedBudget = budgets.find(b => b.id === selectedBudgetId);
+        if (!selectedBudget || !selectedBudget.lines) {
+            return [];
+        }
 
-        budgets.forEach((budget) => {
-            const accountName = analyticalAccounts.find((a) => a.id === budget.analyticalAccountId)?.name || "Unknown";
-            const existing = accountMap.get(accountName) || { budget: 0, spent: 0 };
+        const accountMap = new Map<string, { budget: number; spent: number; accountId: number }>();
+
+        // Aggregate budget lines for the selected budget only
+        selectedBudget.lines.forEach((line: any) => {
+            const accountName = line.analyticalAccountName || "Unknown";
+            const accountId = line.analyticalAccountId;
+            const existing = accountMap.get(accountName) || { budget: 0, spent: 0, accountId };
             accountMap.set(accountName, {
-                budget: existing.budget + (budget.plannedAmount || 0),
-                spent: existing.spent + (budget.actualAmount || 0),
+                budget: existing.budget + (line.budgetedAmount || 0),
+                spent: existing.spent + (line.actualAmount || 0),
+                accountId,
             });
         });
 
@@ -84,24 +102,38 @@ export default function BudgetOverview() {
                 percentage: data.budget > 0 ? ((data.spent / data.budget) * 100).toFixed(1) : '0',
             }))
             .sort((a, b) => b.budget - a.budget);
-    }, [budgets, analyticalAccounts]);
+    }, [budgets, selectedBudgetId]);
 
-    // Identify over-budget items
+    // Identify over-budget items from selected budget lines only
     const alerts: BudgetAlert[] = useMemo(() => {
+        const selectedBudget = budgets.find(b => b.id === selectedBudgetId);
+        if (!selectedBudget || !selectedBudget.lines) {
+            return [];
+        }
+
+        const alertMap = new Map<string, { budgeted: number; actual: number; accountId: number }>();
+
+        // Aggregate budget lines for the selected budget only
+        selectedBudget.lines.forEach((line: any) => {
+            const accountName = line.analyticalAccountName || "Unknown";
+            const accountId = line.analyticalAccountId;
+            const existing = alertMap.get(accountName) || { budgeted: 0, actual: 0, accountId };
+            alertMap.set(accountName, {
+                budgeted: existing.budgeted + (line.budgetedAmount || 0),
+                actual: existing.actual + (line.actualAmount || 0),
+                accountId,
+            });
+        });
+
         const overBudget: BudgetAlert[] = [];
-
-        budgets.forEach((budget) => {
-            const spent = budget.actualAmount || 0;
-            const planned = budget.plannedAmount || 1;
-            const percentage = (spent / planned) * 100;
-
+        alertMap.forEach((data, accountName) => {
+            const percentage = data.budgeted > 0 ? (data.actual / data.budgeted) * 100 : 0;
             if (percentage >= 90) {
-                const accountName = analyticalAccounts.find((a) => a.id === budget.analyticalAccountId)?.name || "Unknown";
                 overBudget.push({
-                    id: budget.id,
+                    id: `${data.accountId}`,
                     account: accountName,
-                    budgeted: budget.plannedAmount,
-                    actual: spent,
+                    budgeted: data.budgeted,
+                    actual: data.actual,
                     percentage,
                     severity: percentage >= 100 ? "error" : "warning",
                 });
@@ -109,7 +141,7 @@ export default function BudgetOverview() {
         });
 
         return overBudget.sort((a, b) => b.percentage - a.percentage);
-    }, [budgets, analyticalAccounts]);
+    }, [budgets, selectedBudgetId]);
 
     const metricCards: MetricCard[] = [
         {
@@ -169,13 +201,15 @@ export default function BudgetOverview() {
                     <p className="text-gray-600 mt-1">Monitor your budget performance at a glance</p>
                 </div>
                 <select
-                    value={selectedPeriod}
-                    onChange={(e) => setSelectedPeriod(e.target.value)}
+                    value={selectedBudgetId || ''}
+                    onChange={(e) => setSelectedBudgetId(Number(e.target.value))}
                     className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 >
-                    <option value="2024">FY 2024-25</option>
-                    <option value="2023">FY 2023-24</option>
-                    <option value="2022">FY 2022-23</option>
+                    {budgets.map((budget) => (
+                        <option key={budget.id} value={budget.id}>
+                            {budget.name}
+                        </option>
+                    ))}
                 </select>
             </div>
 
