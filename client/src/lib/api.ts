@@ -5,7 +5,9 @@ import { transformKeysToCamelCase } from './utils';
 // API endpoints
 export const API_ENDPOINTS = {
   auth: {
+    base: '/auth',
     login: '/auth/login',
+    signup: '/auth/signup',
     register: '/auth/register',
     logout: '/auth/logout',
     profile: '/auth/profile',

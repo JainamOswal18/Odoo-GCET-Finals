@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Filter, Save, FileText, AlertTriangle, Package, Loader2 } from "lucide-react";
+import { Plus, Search, Filter, Save, FileText, AlertTriangle, Package, Loader2, FileDown } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Input, Card, Select } from "@/components/ui";
 import { purchaseOrdersApi, contactsApi, productsApi, analyticalAccountsApi } from "@/lib/api";
+import { generatePurchaseOrderPDF } from "@/lib/pdfGenerator";
 import type { PurchaseOrder } from "@/lib/types";
 
 const lineItemSchema = z.object({
@@ -35,7 +36,7 @@ export const PurchaseOrders: React.FC = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [status, setStatus] = useState<"draft" | "confirmed" | "done" | "cancelled">("draft");
-    const [showBudgetWarning, setShowBudgetWarning] = useState(false);
+    const [showBudgetWarning, _setShowBudgetWarning] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
@@ -387,6 +388,23 @@ export const PurchaseOrders: React.FC = () => {
                             Confirm
                         </Button>
                         <Button variant="outline" onClick={() => window.print()}>Print</Button>
+                        <Button variant="outline" onClick={() => {
+                            if (editingId) {
+                                const order = orders.find(o => o.id === editingId);
+                                const vendor = contacts.find(c => c.id === watch('vendorId'));
+                                if (order) {
+                                    generatePurchaseOrderPDF(
+                                        order,
+                                        vendor?.name || 'Vendor',
+                                        watchLineItems.map((item) => ({
+                                            productName: products.find(p => p.id === item.productId)?.name || 'Product',
+                                            quantity: item.quantity,
+                                            unitPrice: item.unitPrice
+                                        }))
+                                    );
+                                }
+                            }
+                        }} leftIcon={<FileDown className="w-4 h-4" />}>Export PDF</Button>
                         <Button variant="outline">Send</Button>
                         <Button variant="outline" onClick={handleCancel} disabled={status === "cancelled"}>Cancel</Button>
                         {status === "confirmed" && editingId && (

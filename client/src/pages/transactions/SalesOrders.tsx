@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Save, FileText } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Save, FileText, FileDown } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Input, Card, Select } from "@/components/ui";
 import { salesOrdersApi, contactsApi, productsApi } from "@/lib/api";
+import { generateSalesOrderPDF } from "@/lib/pdfGenerator";
 import type { SalesOrder } from "@/lib/types";
 
 const lineItemSchema = z.object({
@@ -33,6 +35,7 @@ export const SalesOrders: React.FC = () => {
     const [status, setStatus] = useState<"draft" | "confirmed" | "done" | "cancelled">("draft");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchData();
@@ -179,6 +182,16 @@ export const SalesOrders: React.FC = () => {
         handleSubmit(onSubmit)();
     };
 
+    const handleCreateInvoice = (so: SalesOrder) => {
+        // Navigate to customer invoice with SO data
+        navigate('/transactions/customer-invoices', { 
+            state: { 
+                fromSO: true,
+                soData: so 
+            } 
+        });
+    };
+
     if (view === "list") {
         return (
             <div className="space-y-6">
@@ -225,9 +238,19 @@ export const SalesOrders: React.FC = () => {
                                             <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">{so.status}</span>
                                         </td>
                                         <td className="px-4 py-3 text-center">
-                                            <Button size="sm" variant="outline" leftIcon={<FileText className="w-3 h-3" />}>
-                                                Create Invoice
-                                            </Button>
+                                            {so.status === "confirmed" && (
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="outline" 
+                                                    leftIcon={<FileText className="w-3 h-3" />}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleCreateInvoice(so);
+                                                    }}
+                                                >
+                                                    Create Invoice
+                                                </Button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -259,11 +282,29 @@ export const SalesOrders: React.FC = () => {
                     <Button onClick={handleSave} leftIcon={<Save className="w-4 h-4" />} disabled={loading}>Save</Button>
                     <Button onClick={handleConfirm} disabled={status === "confirmed" || loading}>Confirm</Button>
                     <Button variant="outline" onClick={() => window.print()}>Print</Button>
+                    <Button variant="outline" onClick={() => {
+                        if (editingId) {
+                            const order = orders.find(o => o.id === editingId);
+                            const customer = contacts.find(c => c.id === watch('customerId'));
+                            if (order) {
+                                generateSalesOrderPDF(
+                                    order,
+                                    customer?.name || 'Customer',
+                                    watchLineItems.map((item) => ({
+                                        productName: products.find(p => p.id === item.productId)?.name || 'Product',
+                                        quantity: item.quantity,
+                                        unitPrice: item.unitPrice
+                                    }))
+                                );
+                            }
+                        }
+                    }} leftIcon={<FileDown className="w-4 h-4" />}>Export PDF</Button>
                     <Button variant="outline">Send</Button>
                     <Button variant="outline" onClick={handleCancel} disabled={status === "cancelled"}>Cancel</Button>
-                    {status === "confirmed" && (
+                    {status === "confirmed" && editingId && (
                         <Button variant="secondary" leftIcon={<FileText className="w-4 h-4" />} onClick={() => {
-                            alert("Create Invoice functionality - will navigate to Customer Invoices page");
+                            const so = orders.find(o => o.id === editingId);
+                            if (so) handleCreateInvoice(so);
                         }}>
                             Create Invoice
                         </Button>

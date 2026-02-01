@@ -13,7 +13,6 @@ import {
     BarChart3,
     PieChart,
     Settings,
-    UserPlus,
     ChevronDown,
     ChevronRight,
     X,
@@ -71,7 +70,7 @@ const navItems: NavItem[] = [
         children: [
             { label: "Overview", icon: <PieChart className="w-4 h-4" />, href: "/budget-monitoring/overview" },
             { label: "Budget vs Actuals", icon: <BarChart3 className="w-4 h-4" />, href: "/budget-monitoring/budget-vs-actuals" },
-            { label: "Revision History", icon: <FileText className="w-4 h-4" />, href: "/budget-monitoring/revision-history" },
+            // { label: "Revision History", icon: <FileText className="w-4 h-4" />, href: "/budget-monitoring/revision-history" },
         ],
     },
     {
@@ -80,7 +79,7 @@ const navItems: NavItem[] = [
         adminOnly: true,
         children: [
             { label: "General Settings", icon: <Settings className="w-4 h-4" />, href: "/settings" },
-            { label: "Create User", icon: <UserPlus className="w-4 h-4" />, href: "/create-user" },
+            // { label: "Create User", icon: <UserPlus className="w-4 h-4" />, href: "/create-user" },
         ],
     },
 ];

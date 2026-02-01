@@ -4,15 +4,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
-import { UserPlus, ArrowRight } from "lucide-react";
-import { Button, Input, PasswordInput, Card, Select } from "@/components/ui";
-import { useAuth } from "@/contexts/AuthContext";
-import type { UserRole } from "@/lib/types";
+import { Shield, ArrowRight } from "lucide-react";
+import { Button, Input, PasswordInput, Card } from "@/components/ui";
+import { buildApiUrl, API_ENDPOINTS } from "@/lib/api";
 
 const signupSchema = z
     .object({
         name: z.string().min(1, "Name is required").min(2, "Name must be at least 2 characters"),
-        role: z.enum(["admin", "portal"], { message: "Role is required" }),
         loginId: z
             .string()
             .min(1, "Login ID is required")
@@ -38,21 +36,16 @@ type SignupFormData = z.infer<typeof signupSchema>;
 
 export const SignUp: React.FC = () => {
     const navigate = useNavigate();
-    const { signup } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
 
     const {
         register,
         handleSubmit,
-        setValue,
-        watch,
         formState: { errors },
     } = useForm<SignupFormData>({
         resolver: zodResolver(signupSchema),
-        defaultValues: {
-            role: "portal",
-        },
     });
 
     const onSubmit = async (data: SignupFormData) => {
@@ -60,14 +53,30 @@ export const SignUp: React.FC = () => {
         setError(null);
 
         try {
-            await signup({
-                name: data.name,
-                loginId: data.loginId,
-                email: data.email,
-                password: data.password,
-                role: data.role as UserRole,
+            const response = await fetch(buildApiUrl(API_ENDPOINTS.auth.signup), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: data.name,
+                    loginId: data.loginId,
+                    email: data.email,
+                    password: data.password,
+                }),
             });
-            navigate("/portal");
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || result.message || 'Signup failed');
+            }
+
+            setSuccess(true);
+            
+            setTimeout(() => {
+                navigate("/login");
+            }, 2000);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Sign up failed. Please try again.");
         } finally {
@@ -94,10 +103,10 @@ export const SignUp: React.FC = () => {
                     {/* Logo & Header */}
                     <div className="text-center mb-8">
                         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 shadow-lg mb-4">
-                            <UserPlus className="w-8 h-8 text-white" />
+                            <Shield className="w-8 h-8 text-white" />
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-900">Create Account</h1>
-                        <p className="text-gray-500 mt-2">Join Shiv Furniture Portal</p>
+                        <h1 className="text-2xl font-bold text-gray-900">Sign Up as Admin</h1>
+                        <p className="text-gray-500 mt-2">Create an administrator account</p>
                     </div>
 
                     {/* Error Message */}
@@ -111,33 +120,35 @@ export const SignUp: React.FC = () => {
                         </motion.div>
                     )}
 
+                    {/* Success Message */}
+                    {success && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mb-6 p-4 bg-green-50 border border-green-100 rounded-lg"
+                        >
+                            <p className="text-sm text-green-600">
+                                Admin account created successfully! Redirecting to login...
+                            </p>
+                        </motion.div>
+                    )}
+
                     {/* Signup Form */}
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <Input
-                                label="Full Name"
-                                placeholder="Enter your full name"
-                                error={errors.name?.message}
-                                {...register("name")}
-                            />
-                            <Select
-                                label="Role (For Testing)"
-                                placeholder="Select role"
-                                options={[
-                                    { value: "admin", label: "Admin" },
-                                    { value: "portal", label: "Portal User" },
-                                ]}
-                                value={watch("role")}
-                                onValueChange={(val) => setValue("role", val as UserRole)}
-                                error={errors.role?.message}
-                            />
-                        </div>
+                        <Input
+                            label="Full Name"
+                            placeholder="Enter your full name"
+                            error={errors.name?.message}
+                            disabled={success}
+                            {...register("name")}
+                        />
 
                         <div className="grid grid-cols-2 gap-4">
                             <Input
                                 label="Login ID"
                                 placeholder="6-12 characters"
                                 error={errors.loginId?.message}
+                                disabled={success}
                                 {...register("loginId")}
                             />
                             <Input
@@ -145,6 +156,7 @@ export const SignUp: React.FC = () => {
                                 type="email"
                                 placeholder="your@email.com"
                                 error={errors.email?.message}
+                                disabled={success}
                                 {...register("email")}
                             />
                         </div>
@@ -153,13 +165,15 @@ export const SignUp: React.FC = () => {
                             label="Password"
                             placeholder="Min 8 chars, 1 upper, 1 special"
                             error={errors.password?.message}
+                            disabled={success}
                             {...register("password")}
                         />
 
                         <PasswordInput
-                            label="Re-enter Password"
-                            placeholder="Confirm your password"
+                            label="Confirm Password"
+                            placeholder="Re-enter your password"
                             error={errors.confirmPassword?.message}
+                            disabled={success}
                             {...register("confirmPassword")}
                         />
 
@@ -168,9 +182,10 @@ export const SignUp: React.FC = () => {
                             className="w-full"
                             size="lg"
                             isLoading={isLoading}
+                            disabled={success}
                             rightIcon={<ArrowRight className="w-4 h-4" />}
                         >
-                            Create Account
+                            {success ? "Account Created!" : "Create Admin Account"}
                         </Button>
                     </form>
 

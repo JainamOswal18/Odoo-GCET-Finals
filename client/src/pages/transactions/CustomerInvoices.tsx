@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Search, Filter, Home, ArrowLeft, AlertTriangle, Loader2 } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { Plus, Search, Filter, Home, ArrowLeft, AlertTriangle, Loader2, FileDown } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Card, Select, Badge } from "@/components/ui";
 import { invoicesApi, contactsApi, productsApi, analyticalAccountsApi } from "@/lib/api";
+import { generateInvoicePDF } from "@/lib/pdfGenerator";
 import type { CustomerInvoice } from "@/lib/types";
 
 const lineItemSchema = z.object({
@@ -38,10 +40,44 @@ export const CustomerInvoices: React.FC = () => {
     const [showBudgetWarning, setShowBudgetWarning] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const location = useLocation();
 
     useEffect(() => {
         fetchData();
     }, []);
+
+    // Handle pre-populated data from Sales Order
+    useEffect(() => {
+        const state = location.state as any;
+        if (state?.fromSO && state?.soData) {
+            const so = state.soData;
+            setView("form");
+            setEditingId(null);
+            setStatus("draft");
+            
+            // Pre-fill form with SO data
+            setTimeout(() => {
+                reset({
+                    customerId: String(so.customerId),
+                    salesOrderId: String(so.id),
+                    invoiceDate: new Date().toISOString().split('T')[0],
+                    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    reference: so.orderNumber || so.soNumber,
+                    lineItems: (so.lineItems || []).map((item: any) => ({
+                        productId: String(item.productId),
+                        quantity: item.quantity,
+                        unitPrice: item.unitPrice,
+                        analyticalAccountId: item.analyticalAccountId ? String(item.analyticalAccountId) : "none",
+                    })),
+                    notes: `Created from SO: ${so.orderNumber || so.soNumber}`,
+                });
+            }, 100);
+            
+            // Clear location state to prevent re-triggering
+            window.history.replaceState({}, document.title);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.state]);
 
     const fetchData = async () => {
         try {
@@ -346,6 +382,23 @@ export const CustomerInvoices: React.FC = () => {
                         Confirm
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => window.print()}>Print</Button>
+                    <Button variant="outline" size="sm" onClick={() => {
+                        if (editingId) {
+                            const invoice = invoices.find(i => i.id === editingId);
+                            const customer = contacts.find(c => c.id === watch('customerId'));
+                            if (invoice) {
+                                generateInvoicePDF(
+                                    invoice,
+                                    customer?.name || 'Customer',
+                                    watchLineItems.map((item) => ({
+                                        productName: products.find(p => p.id === item.productId)?.name || 'Product',
+                                        quantity: item.quantity,
+                                        unitPrice: item.unitPrice
+                                    }))
+                                );
+                            }
+                        }
+                    }} leftIcon={<FileDown className="w-4 h-4" />}>Export PDF</Button>
                     <Button variant="outline" size="sm">Send</Button>
                     <Button variant="outline" size="sm" onClick={handleCancel} disabled={status === "cancelled"}>
                         Cancel
@@ -410,7 +463,7 @@ export const CustomerInvoices: React.FC = () => {
                                         </label>
                                         <Select
                                             options={contacts.filter((c: any) => c.type === "customer" || c.contactType === "customer" || c.type === "both" || c.contactType === "both").map((c: any) => ({
-                                                value: c.id,
+                                                value: String(c.id),
                                                 label: c.name
                                             }))}
                                             value={watch("customerId")}
@@ -566,12 +619,12 @@ export const CustomerInvoices: React.FC = () => {
                                                 <td className="p-2">
                                                     <Select
                                                         options={products.map((p: any) => ({
-                                                            value: p.id,
+                                                            value: String(p.id),
                                                             label: p.name
                                                         }))}
                                                         value={watchLineItems[index]?.productId}
                                                         onValueChange={(val) => {
-                                                            const prod = products.find((p: any) => p.id === val);
+                                                            const prod = products.find((p: any) => String(p.id) === val);
                                                             setValue(`lineItems.${index}.productId`, val);
                                                             if (prod) {
                                                                 setValue(`lineItems.${index}.unitPrice`, prod.salesPrice ?? prod.salePrice ?? 0);
@@ -585,7 +638,7 @@ export const CustomerInvoices: React.FC = () => {
                                                         options={[
                                                             { value: "none", label: "None" },
                                                             ...analyticalAccounts.map((a: any) => ({
-                                                                value: a.id,
+                                                                value: String(a.id),
                                                                 label: a.name
                                                             }))
                                                         ]}

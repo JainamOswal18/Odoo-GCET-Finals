@@ -18,6 +18,57 @@ function generateSecurePassword(length = 12) {
 class AuthController {
 
   // ============================================================================
+  // PUBLIC ADMIN SIGNUP
+  // ============================================================================
+  async signup(req, res, next) {
+    try {
+      const { name, loginId, email, password } = req.body;
+
+      // Check if login ID already exists
+      const existingUser = await getQuery(
+        'SELECT id FROM users WHERE login_id = ?',
+        [loginId]
+      );
+
+      if (existingUser) {
+        return res.status(400).json({ error: 'Login ID already exists' });
+      }
+
+      // Check if email already exists
+      const existingEmail = await getQuery(
+        'SELECT id FROM users WHERE email = ?',
+        [email]
+      );
+
+      if (existingEmail) {
+        return res.status(400).json({ error: 'Email already exists' });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create the first admin user
+      const result = await runQuery(
+        `INSERT INTO users (login_id, email, password_hash, full_name, role, active)
+         VALUES (?, ?, ?, ?, 'admin', 1)`,
+        [loginId, email, hashedPassword, name]
+      );
+
+      res.status(201).json({
+        message: 'Admin account created successfully',
+        user: {
+          id: result.lastID,
+          loginId,
+          email,
+          name,
+          role: 'admin'
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ============================================================================
   // ADMIN USER REGISTRATION (Admin creates new Admin or Portal user)
   // ============================================================================
   async register(req, res, next) {

@@ -3,7 +3,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { AdminLayout, PortalLayout } from "@/layouts";
 
 // Auth Pages
-import { Login, CreateUser, ForgotPassword } from "@/pages/auth";
+import { Login, SignUp, CreateUser, ForgotPassword } from "@/pages/auth";
 
 // Main Pages
 import { Dashboard } from "@/pages/Dashboard";
@@ -37,7 +37,7 @@ import { MyOrders } from "@/pages/portal/MyOrders";
 import { PortalPayments } from "@/pages/portal/PortalPayments";
 
 // Placeholder components for routes not yet implemented
-const Placeholder = ({ title }: { title: string }) => (
+const _Placeholder = ({ title }: { title: string }) => (
   <div className="flex items-center justify-center min-h-[400px]">
     <div className="text-center">
       <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
@@ -53,6 +53,7 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Admin Routes */}

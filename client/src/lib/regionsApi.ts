@@ -1,4 +1,4 @@
-import { apiRequest, buildApiUrl } from './api';
+import { apiRequest } from './api';
 import type { Country, State, City } from './types';
 
 export const regionsApi = {

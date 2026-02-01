@@ -13,6 +13,31 @@ const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^a-zA-Z0-9]).{8,}$/;
 // PUBLIC ROUTES (No authentication required)
 // ============================================================================
 
+// Public Admin Signup - Only allowed when no admin exists (first-time setup)
+router.post('/signup',
+  [
+    body('name')
+      .trim()
+      .notEmpty().withMessage('Name is required')
+      .isLength({ min: 2 }).withMessage('Name must be at least 2 characters'),
+    body('loginId')
+      .trim()
+      .notEmpty().withMessage('Login ID is required')
+      .isLength({ min: 6 }).withMessage('Login ID must be at least 6 characters')
+      .matches(/^[a-zA-Z0-9_]+$/).withMessage('Login ID can only contain letters, numbers, and underscores'),
+    body('email')
+      .isEmail().withMessage('Valid email is required')
+      .normalizeEmail(),
+    body('password')
+      .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+      .matches(/[a-z]/).withMessage('Password must contain at least one lowercase letter')
+      .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter')
+      .matches(/[^a-zA-Z0-9]/).withMessage('Password must contain at least one special character')
+  ],
+  validate,
+  authController.signup
+);
+
 // Unified Login - Auto-detects Admin or Portal user based on login_id or email
 // Accepts login_id (6+ chars) or email address
 router.post('/login',

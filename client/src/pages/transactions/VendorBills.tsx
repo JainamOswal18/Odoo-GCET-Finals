@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Search, Filter, Save, CreditCard, AlertTriangle } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { Plus, Search, Filter, Save, CreditCard, AlertTriangle, FileDown } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Input, Card, Select } from "@/components/ui";
 import { billsApi, purchaseOrdersApi, contactsApi, productsApi, analyticalAccountsApi } from "@/lib/api";
+import { generateVendorBillPDF } from "@/lib/pdfGenerator";
 import type { VendorBill } from "@/lib/types";
 
 const lineItemSchema = z.object({
@@ -37,10 +39,43 @@ export const VendorBills: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [_loading, setLoading] = useState(false);
     const [_error, setError] = useState<string | null>(null);
+    const location = useLocation();
 
     useEffect(() => {
         fetchData();
     }, []);
+
+    // Handle pre-populated data from Purchase Order
+    useEffect(() => {
+        const state = location.state as any;
+        if (state?.fromPO && state?.poData) {
+            const po = state.poData;
+            setView("form");
+            setEditingId(null);
+            setStatus("draft");
+            
+            // Pre-fill form with PO data
+            setTimeout(() => {
+                reset({
+                    vendorId: String(po.vendorId),
+                    purchaseOrderId: String(po.id),
+                    billDate: new Date().toISOString().split('T')[0],
+                    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    billReference: po.orderNumber || po.poNumber,
+                    lineItems: (po.lineItems || []).map((item: any) => ({
+                        productId: String(item.productId),
+                        quantity: item.quantity,
+                        unitPrice: item.unitPrice,
+                        analyticalAccountId: item.analyticalAccountId ? String(item.analyticalAccountId) : "none",
+                    })),
+                    notes: `Created from PO: ${po.orderNumber || po.poNumber}`,
+                });
+            }, 100);
+            
+            // Clear location state to prevent re-triggering
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state]);
 
     const fetchData = async () => {
         try {
@@ -395,6 +430,23 @@ export const VendorBills: React.FC = () => {
                             Confirm
                         </Button>
                         <Button variant="outline" onClick={() => window.print()}>Print</Button>
+                        <Button variant="outline" onClick={() => {
+                            if (editingId) {
+                                const bill = bills.find(b => b.id === editingId);
+                                const vendor = contacts.find(c => c.id === watch('vendorId'));
+                                if (bill) {
+                                    generateVendorBillPDF(
+                                        bill,
+                                        vendor?.name || 'Vendor',
+                                        watchLineItems.map((item) => ({
+                                            productName: products.find(p => p.id === item.productId)?.name || 'Product',
+                                            quantity: item.quantity,
+                                            unitPrice: item.unitPrice
+                                        }))
+                                    );
+                                }
+                            }
+                        }} leftIcon={<FileDown className="w-4 h-4" />}>Export PDF</Button>
                         <Button variant="outline">Send</Button>
                         <Button variant="outline" onClick={handleCancel} disabled={status === "cancelled"}>Cancel</Button>
                         {currentBill && currentBill.amountDue > 0 && (
@@ -444,7 +496,7 @@ export const VendorBills: React.FC = () => {
                     <Select
                         label="Vendor Name"
                         options={contacts.filter((c: any) => c.type === "vendor" || c.contactType === "vendor" || c.type === "both" || c.contactType === "both").map((c: any) => ({
-                            value: c.id,
+                            value: String(c.id),
                             label: c.name
                         }))}
                         value={watch("vendorId")}
@@ -490,12 +542,12 @@ export const VendorBills: React.FC = () => {
                                         <td className="p-2">
                                             <Select
                                                 options={products.map((p: any) => ({
-                                                    value: p.id,
+                                                    value: String(p.id),
                                                     label: p.name
                                                 }))}
                                                 value={watchLineItems[index]?.productId}
                                                 onValueChange={(val) => {
-                                                    const prod = products.find((p: any) => p.id === val);
+                                                    const prod = products.find((p: any) => String(p.id) === val);
                                                     setValue(`lineItems.${index}.productId`, val);
                                                     if (prod) {
                                                         setValue(`lineItems.${index}.unitPrice`, (prod as any).purchasePrice || (prod as any).purchase_price || 0);
@@ -508,7 +560,7 @@ export const VendorBills: React.FC = () => {
                                                 options={[
                                                     { value: "none", label: "None" },
                                                     ...analyticalAccounts.map((a: any) => ({
-                                                        value: a.id,
+                                                        value: String(a.id),
                                                         label: a.name
                                                     }))
                                                 ]}

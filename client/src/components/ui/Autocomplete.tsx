@@ -35,7 +35,7 @@ export function Autocomplete({
   const [options, setOptions] = useState<AutocompleteOption[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedOption, setSelectedOption] = useState<AutocompleteOption | null>(null);
+  const [_selectedOption, setSelectedOption] = useState<AutocompleteOption | null>(null);
   
   const debouncedSearch = useDebounce(inputValue, 300);
   const wrapperRef = useRef<HTMLDivElement>(null);

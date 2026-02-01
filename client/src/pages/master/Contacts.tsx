@@ -43,7 +43,7 @@ export const Contacts: React.FC = () => {
     // Region selection states
     const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
     const [selectedState, setSelectedState] = useState<State | null>(null);
-    const [selectedCity, setSelectedCity] = useState<City | null>(null);
+    const [_selectedCity, setSelectedCity] = useState<City | null>(null);
     
     const navigate = useNavigate();
 

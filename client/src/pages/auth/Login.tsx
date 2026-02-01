@@ -142,6 +142,19 @@ export const Login: React.FC = () => {
                             Portal users can also login here with their credentials
                         </p>
                     </div>
+
+                    {/* Sign Up Link */}
+                    <div className="mt-6 text-center">
+                        <p className="text-gray-600">
+                            Don't have an account?{" "}
+                            <Link
+                                to="/signup"
+                                className="text-indigo-600 hover:text-indigo-700 font-medium"
+                            >
+                                Sign up as Admin
+                            </Link>
+                        </p>
+                    </div>
                 </Card>
             </motion.div>
         </div>
