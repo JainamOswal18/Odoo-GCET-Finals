@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Search, Filter, Save, FileText, AlertTriangle, Package, Loader2 } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,6 +38,7 @@ export const PurchaseOrders: React.FC = () => {
     const [showBudgetWarning, setShowBudgetWarning] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const navigate = useNavigate();
 
     // Fetch data on mount
     useEffect(() => {
@@ -91,9 +93,7 @@ export const PurchaseOrders: React.FC = () => {
 
     // Calculate totals
     const calculateLineTotal = (quantity: number, unitPrice: number) => {
-        const subtotal = quantity * unitPrice;
-        const taxAmount = subtotal * 0.18; // 18% tax
-        return subtotal + taxAmount;
+        return quantity * unitPrice;
     };
 
     const grandTotal = watchLineItems?.reduce((sum, item) => {
@@ -196,8 +196,12 @@ export const PurchaseOrders: React.FC = () => {
 
     const handleCreateBill = (po: PurchaseOrder) => {
         // Navigate to vendor bill with PO data
-        console.log("Creating bill from PO:", po.orderNumber);
-        // This would navigate to vendor bills page with pre-filled data
+        navigate('/transactions/vendor-bills', { 
+            state: { 
+                fromPO: true,
+                poData: po 
+            } 
+        });
     };
 
     const filteredOrders = orders.filter((o) =>
@@ -385,10 +389,10 @@ export const PurchaseOrders: React.FC = () => {
                         <Button variant="outline" onClick={() => window.print()}>Print</Button>
                         <Button variant="outline">Send</Button>
                         <Button variant="outline" onClick={handleCancel} disabled={status === "cancelled"}>Cancel</Button>
-                        {status === "confirmed" && (
+                        {status === "confirmed" && editingId && (
                             <Button variant="secondary" leftIcon={<FileText className="w-4 h-4" />} onClick={() => {
-                                console.log("Navigate to Create Bill with PO data");
-                                alert("Create Bill functionality - will navigate to Vendor Bills page with pre-filled data");
+                                const po = orders.find(o => o.id === editingId);
+                                if (po) handleCreateBill(po);
                             }}>
                                 Create Bill
                             </Button>
