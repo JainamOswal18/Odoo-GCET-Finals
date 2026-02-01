@@ -41,14 +41,29 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: 'Too many requests from this IP, please try again later'
+  windowMs: (process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000, // Default 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '5000'), // Default 5000 requests
+  message: 'Too many requests from this IP, please try again later',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
 app.use('/api/', limiter);
 
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Enable CORS for uploads directory with proper headers
+app.use('/uploads', cors({
+  origin: corsOrigins,
+  credentials: true,
+  methods: ['GET', 'HEAD'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Length', 'Content-Type'],
+}), express.static(path.join(__dirname, '../uploads'), {
+  setHeaders: (res, path) => {
+    // Set CORS headers for all files
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  }
+}));
 
 app.use('/api', routes);
 
