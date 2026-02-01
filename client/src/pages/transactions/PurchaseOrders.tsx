@@ -34,6 +34,7 @@ export const PurchaseOrders: React.FC = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [status, setStatus] = useState<"draft" | "confirmed" | "done" | "cancelled">("draft");
+    const [showBudgetWarning, setShowBudgetWarning] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
