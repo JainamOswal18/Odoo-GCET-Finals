@@ -170,23 +170,25 @@ const reportValidation = {
 // Auto analytical model validation schemas
 const autoAnalyticalModelValidation = {
   create: [
-    body('name').trim().notEmpty().withMessage('Name is required'),
-    body('model_type').isIn(['purchase', 'sale', 'both']).withMessage('Valid model type is required'),
-    body('priority').optional().isInt({ min: 1 }).withMessage('Priority must be a positive integer'),
-    body('conditions').isArray({ min: 1 }).withMessage('At least one condition is required'),
-    body('conditions.*.condition_type').isString().withMessage('Condition type is required'),
-    body('conditions.*.field_name').isString().withMessage('Field name is required'),
-    body('conditions.*.operator').isIn(['equals', 'contains', 'starts_with', 'greater_than', 'less_than'])
-      .withMessage('Invalid operator'),
-    body('conditions.*.value').notEmpty().withMessage('Value is required'),
-    body('conditions.*.analytical_account_id').isInt().withMessage('Analytical account ID is required'),
-    body('conditions.*.percentage').optional().isFloat({ min: 0, max: 100 }).withMessage('Percentage must be between 0 and 100')
+    body('analyticalAccountId').trim().notEmpty().withMessage('Analytical account is required'),
+    body('status').optional().isIn(['new', 'confirm', 'archived']).withMessage('Invalid status'),
+    body('partnerTag').optional().isString().withMessage('Partner tag must be a string'),
+    body('productCategory').optional().isString().withMessage('Product category must be a string'),
+    body('partnerId').optional().isInt().withMessage('Partner ID must be an integer'),
+    body('productId').optional().isInt().withMessage('Product ID must be an integer')
   ],
   update: [
     param('id').isInt().withMessage('Invalid model ID'),
-    body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
-    body('model_type').optional().isIn(['purchase', 'sale', 'both']).withMessage('Invalid model type'),
-    body('priority').optional().isInt({ min: 1 }).withMessage('Priority must be a positive integer')
+    body('analyticalAccountId').optional().trim().notEmpty().withMessage('Analytical account cannot be empty'),
+    body('status').optional().isIn(['new', 'confirm', 'archived']).withMessage('Invalid status'),
+    body('partnerTag').optional().isString().withMessage('Partner tag must be a string'),
+    body('productCategory').optional().isString().withMessage('Product category must be a string'),
+    body('partnerId').optional().isInt().withMessage('Partner ID must be an integer'),
+    body('productId').optional().isInt().withMessage('Product ID must be an integer')
+  ],
+  updateStatus: [
+    param('id').isInt().withMessage('Invalid model ID'),
+    body('status').isIn(['new', 'confirm', 'archived']).withMessage('Invalid status')
   ]
 };
 

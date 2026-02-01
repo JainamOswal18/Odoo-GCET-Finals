@@ -1,106 +1,119 @@
 import { allQuery, getQuery } from '../config/database.js';
 
 class AnalyticalService {
-  async applyAutoModels(transaction) {
+  async applyAutoModels(transactionData) {
     try {
+      // Get all active confirmed models
       const models = await allQuery(
         `SELECT * FROM auto_analytical_models 
-         WHERE active = 1 AND (model_type = ? OR model_type = 'both')
-         ORDER BY priority ASC`,
-        [transaction.type]
+         WHERE active = 1 AND status = 'confirm'
+         ORDER BY id ASC`,
+        []
       );
 
-      const assignments = [];
+      if (models.length === 0) {
+        return null;
+      }
+
+      // Extract transaction fields
+      const { partnerId, productId, partnerTag, productCategory } = transactionData;
+
+      // Find the best matching model (most fields matched)
+      let bestMatch = null;
+      let maxMatches = 0;
 
       for (const model of models) {
-        const conditions = await allQuery(
-          'SELECT * FROM auto_analytical_conditions WHERE model_id = ?',
-          [model.id]
-        );
+        let matchCount = 0;
 
-        let matches = true;
-
-        for (const condition of conditions) {
-          const fieldValue = this.getFieldValue(transaction, condition.field_name);
-          
-          if (!this.evaluateCondition(fieldValue, condition.operator, condition.value)) {
-            matches = false;
-            break;
+        // Check each field for match
+        if (model.partner_id && model.partner_id == partnerId) {
+          matchCount++;
+        }
+        if (model.product_id && model.product_id == productId) {
+          matchCount++;
+        }
+        if (model.partner_tag && partnerTag) {
+          // Handle both array and string formats
+          if (Array.isArray(partnerTag)) {
+            if (partnerTag.some(tag => 
+              String(tag).toLowerCase().includes(String(model.partner_tag).toLowerCase())
+            )) {
+              matchCount++;
+            }
+          } else if (String(partnerTag).toLowerCase().includes(String(model.partner_tag).toLowerCase())) {
+            matchCount++;
           }
         }
+        if (model.product_category && productCategory && 
+            String(productCategory).toLowerCase() === String(model.product_category).toLowerCase()) {
+          matchCount++;
+        }
 
-        if (matches && conditions.length > 0) {
-          conditions.forEach(condition => {
-            assignments.push({
-              analytical_account_id: condition.analytical_account_id,
-              percentage: condition.percentage
-            });
-          });
-          break;
+        // Update best match if this model has more matches
+        if (matchCount > 0 && matchCount > maxMatches) {
+          maxMatches = matchCount;
+          bestMatch = model;
         }
       }
 
-      return assignments;
+      // Return the analytical account ID from best matching model
+      return bestMatch ? bestMatch.analytical_account_id : null;
     } catch (error) {
       console.error('Error applying auto models:', error);
-      return [];
+      return null;
     }
   }
 
-  getFieldValue(transaction, fieldName) {
-    const parts = fieldName.split('.');
-    let value = transaction;
-    
-    for (const part of parts) {
-      value = value?.[part];
-    }
-    
-    return value;
-  }
-
-  evaluateCondition(fieldValue, operator, conditionValue) {
-    if (fieldValue === null || fieldValue === undefined) {
-      return false;
-    }
-
-    const field = String(fieldValue).toLowerCase();
-    const value = String(conditionValue).toLowerCase();
-
-    switch (operator) {
-      case 'equals':
-        return field === value;
-      case 'contains':
-        return field.includes(value);
-      case 'starts_with':
-        return field.startsWith(value);
-      case 'greater_than':
-        return parseFloat(fieldValue) > parseFloat(conditionValue);
-      case 'less_than':
-        return parseFloat(fieldValue) < parseFloat(conditionValue);
-      default:
-        return false;
-    }
-  }
-
-  async assignAnalyticalAccounts(lines, transactionType, transactionData) {
+  async assignAnalyticalAccounts(lines, transactionData) {
     const updatedLines = [];
 
     for (const line of lines) {
+      // Skip if already has analytical account assigned
       if (line.analytical_account_id) {
         updatedLines.push(line);
         continue;
       }
 
-      const transaction = {
-        type: transactionType,
-        ...transactionData,
-        line
+      // Get product details for matching
+      let product = null;
+      if (line.product_id) {
+        product = await getQuery('SELECT * FROM products WHERE id = ?', [line.product_id]);
+      }
+
+      // Get partner details for matching
+      let partner = null;
+      if (transactionData.partnerId || transactionData.vendor_id || transactionData.customer_id) {
+        const contactId = transactionData.partnerId || transactionData.vendor_id || transactionData.customer_id;
+        partner = await getQuery('SELECT * FROM contacts WHERE id = ?', [contactId]);
+      }
+
+      // Parse partner tags if they're in JSON format
+      let partnerTags = null;
+      if (partner?.tags) {
+        try {
+          if (typeof partner.tags === 'string' && partner.tags.startsWith('[')) {
+            partnerTags = JSON.parse(partner.tags);
+          } else {
+            partnerTags = partner.tags;
+          }
+        } catch (e) {
+          partnerTags = partner.tags;
+        }
+      }
+
+      // Build matching data
+      const matchData = {
+        partnerId: partner?.id,
+        partnerTag: partnerTags,
+        productId: product?.id,
+        productCategory: product?.category
       };
 
-      const assignments = await this.applyAutoModels(transaction);
+      // Apply auto models
+      const analyticalAccountId = await this.applyAutoModels(matchData);
 
-      if (assignments.length > 0) {
-        line.analytical_account_id = assignments[0].analytical_account_id;
+      if (analyticalAccountId) {
+        line.analytical_account_id = analyticalAccountId;
       }
 
       updatedLines.push(line);

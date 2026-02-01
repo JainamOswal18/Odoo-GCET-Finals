@@ -13,7 +13,7 @@ class SalesOrderController {
             const so_number = generateUniqueNumber('SO-', lastSO?.so_number);
 
             const processedLines = await analyticalService.assignAnalyticalAccounts(
-                lines, 'sale', { customer_id }
+                lines, { customer_id }
             );
 
             const totals = calculateTotals(processedLines);

@@ -13,7 +13,7 @@ class BillController {
             const bill_number = generateUniqueNumber('BILL-', lastBill?.bill_number);
 
             const processedLines = await analyticalService.assignAnalyticalAccounts(
-                lines, 'purchase', { vendor_id }
+                lines, { vendor_id }
             );
 
             const totals = calculateTotals(processedLines);

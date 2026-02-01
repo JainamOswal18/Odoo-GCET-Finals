@@ -4,30 +4,40 @@ import { paginate } from '../utils/helpers.js';
 class AutoAnalyticalModelController {
     async create(req, res, next) {
         try {
-            const { name, model_type, priority, conditions } = req.body;
+            const { 
+                status = 'new',
+                partnerTag, 
+                productCategory, 
+                partnerId, 
+                productId, 
+                analyticalAccountId 
+            } = req.body;
 
-            const result = await runQuery(
-                `INSERT INTO auto_analytical_models (name, model_type, priority)
-         VALUES (?, ?, ?)`,
-                [name, model_type, priority || 10]
-            );
-
-            const modelId = result.id;
-
-            if (conditions && conditions.length > 0) {
-                for (const condition of conditions) {
-                    await runQuery(
-                        `INSERT INTO auto_analytical_conditions (model_id, condition_type, field_name,
-             operator, value, analytical_account_id, percentage)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                        [modelId, condition.condition_type, condition.field_name,
-                            condition.operator, condition.value, condition.analytical_account_id,
-                            condition.percentage || 100]
-                    );
-                }
+            if (!analyticalAccountId) {
+                return res.status(400).json({ error: 'Analytical account is required' });
             }
 
-            const model = await getQuery('SELECT * FROM auto_analytical_models WHERE id = ?', [modelId]);
+            const result = await runQuery(
+                `INSERT INTO auto_analytical_models 
+                (status, partner_tag, product_category, partner_id, product_id, analytical_account_id)
+                VALUES (?, ?, ?, ?, ?, ?)`,
+                [status, partnerTag || null, productCategory || null, 
+                 partnerId || null, productId || null, analyticalAccountId]
+            );
+
+            const model = await getQuery(
+                `SELECT aam.*, 
+                        aa.code as analytical_account_code, 
+                        aa.name as analytical_account_name,
+                        c.name as partner_name,
+                        p.name as product_name
+                 FROM auto_analytical_models aam
+                 LEFT JOIN analytical_accounts aa ON aam.analytical_account_id = aa.id
+                 LEFT JOIN contacts c ON aam.partner_id = c.id
+                 LEFT JOIN products p ON aam.product_id = p.id
+                 WHERE aam.id = ?`, 
+                [result.id]
+            );
 
             res.status(201).json({
                 message: 'Auto analytical model created successfully',
@@ -40,24 +50,36 @@ class AutoAnalyticalModelController {
 
     async getAll(req, res, next) {
         try {
-            const { page = 1, limit = 10, model_type, active = '1' } = req.query;
+            const { page = 1, limit = 100, status, active = '1' } = req.query;
             const { limit: lmt, offset } = paginate(page, limit);
 
-            let query = 'SELECT * FROM auto_analytical_models WHERE active = ?';
+            let query = `SELECT aam.*, 
+                                aa.code as analytical_account_code, 
+                                aa.name as analytical_account_name,
+                                c.name as partner_name,
+                                p.name as product_name
+                         FROM auto_analytical_models aam
+                         LEFT JOIN analytical_accounts aa ON aam.analytical_account_id = aa.id
+                         LEFT JOIN contacts c ON aam.partner_id = c.id
+                         LEFT JOIN products p ON aam.product_id = p.id
+                         WHERE aam.active = ?`;
             const params = [active === '1' ? 1 : 0];
 
-            if (model_type) {
-                query += ' AND model_type = ?';
-                params.push(model_type);
+            if (status) {
+                query += ' AND aam.status = ?';
+                params.push(status);
             }
 
-            query += ' ORDER BY priority ASC, name ASC LIMIT ? OFFSET ?';
+            query += ' ORDER BY aam.created_at DESC LIMIT ? OFFSET ?';
             params.push(lmt, offset);
 
             const models = await allQuery(query, params);
 
-            const countQuery = query.split('LIMIT')[0].replace('SELECT *', 'SELECT COUNT(*) as total');
-            const countResult = await getQuery(countQuery, params.slice(0, -2));
+            const countQuery = `SELECT COUNT(*) as total 
+                               FROM auto_analytical_models aam 
+                               WHERE aam.active = ?${status ? ' AND aam.status = ?' : ''}`;
+            const countParams = status ? [active === '1' ? 1 : 0, status] : [active === '1' ? 1 : 0];
+            const countResult = await getQuery(countQuery, countParams);
 
             res.json({
                 models,
@@ -77,21 +99,25 @@ class AutoAnalyticalModelController {
         try {
             const { id } = req.params;
 
-            const model = await getQuery('SELECT * FROM auto_analytical_models WHERE id = ?', [id]);
+            const model = await getQuery(
+                `SELECT aam.*, 
+                        aa.code as analytical_account_code, 
+                        aa.name as analytical_account_name,
+                        c.name as partner_name,
+                        p.name as product_name
+                 FROM auto_analytical_models aam
+                 LEFT JOIN analytical_accounts aa ON aam.analytical_account_id = aa.id
+                 LEFT JOIN contacts c ON aam.partner_id = c.id
+                 LEFT JOIN products p ON aam.product_id = p.id
+                 WHERE aam.id = ?`, 
+                [id]
+            );
 
             if (!model) {
                 return res.status(404).json({ error: 'Auto analytical model not found' });
             }
 
-            const conditions = await allQuery(
-                `SELECT aac.*, aa.code, aa.name as account_name
-         FROM auto_analytical_conditions aac
-         JOIN analytical_accounts aa ON aac.analytical_account_id = aa.id
-         WHERE aac.model_id = ?`,
-                [id]
-            );
-
-            res.json({ model, conditions });
+            res.json({ model });
         } catch (error) {
             next(error);
         }
@@ -100,7 +126,15 @@ class AutoAnalyticalModelController {
     async update(req, res, next) {
         try {
             const { id } = req.params;
-            const { name, model_type, priority, active, conditions } = req.body;
+            const { 
+                status,
+                partnerTag, 
+                productCategory, 
+                partnerId, 
+                productId, 
+                analyticalAccountId,
+                active 
+            } = req.body;
 
             const model = await getQuery('SELECT * FROM auto_analytical_models WHERE id = ?', [id]);
 
@@ -110,33 +144,73 @@ class AutoAnalyticalModelController {
 
             await runQuery(
                 `UPDATE auto_analytical_models 
-         SET name = ?, model_type = ?, priority = ?, active = ?, updated_at = datetime('now')
-         WHERE id = ?`,
-                [name || model.name, model_type || model.model_type,
-                priority !== undefined ? priority : model.priority,
-                active !== undefined ? active : model.active, id]
+                 SET status = ?, 
+                     partner_tag = ?, 
+                     product_category = ?, 
+                     partner_id = ?, 
+                     product_id = ?, 
+                     analytical_account_id = ?,
+                     active = ?,
+                     updated_at = datetime('now')
+                 WHERE id = ?`,
+                [
+                    status !== undefined ? status : model.status,
+                    partnerTag !== undefined ? partnerTag : model.partner_tag,
+                    productCategory !== undefined ? productCategory : model.product_category,
+                    partnerId !== undefined ? partnerId : model.partner_id,
+                    productId !== undefined ? productId : model.product_id,
+                    analyticalAccountId !== undefined ? analyticalAccountId : model.analytical_account_id,
+                    active !== undefined ? active : model.active,
+                    id
+                ]
             );
 
-            if (conditions) {
-                await runQuery('DELETE FROM auto_analytical_conditions WHERE model_id = ?', [id]);
-
-                for (const condition of conditions) {
-                    await runQuery(
-                        `INSERT INTO auto_analytical_conditions (model_id, condition_type, field_name,
-             operator, value, analytical_account_id, percentage)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                        [id, condition.condition_type, condition.field_name,
-                            condition.operator, condition.value, condition.analytical_account_id,
-                            condition.percentage || 100]
-                    );
-                }
-            }
-
-            const updated = await getQuery('SELECT * FROM auto_analytical_models WHERE id = ?', [id]);
+            const updated = await getQuery(
+                `SELECT aam.*, 
+                        aa.code as analytical_account_code, 
+                        aa.name as analytical_account_name,
+                        c.name as partner_name,
+                        p.name as product_name
+                 FROM auto_analytical_models aam
+                 LEFT JOIN analytical_accounts aa ON aam.analytical_account_id = aa.id
+                 LEFT JOIN contacts c ON aam.partner_id = c.id
+                 LEFT JOIN products p ON aam.product_id = p.id
+                 WHERE aam.id = ?`, 
+                [id]
+            );
 
             res.json({
                 message: 'Auto analytical model updated successfully',
                 model: updated
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async updateStatus(req, res, next) {
+        try {
+            const { id } = req.params;
+            const { status } = req.body;
+
+            if (!['new', 'confirm', 'archived'].includes(status)) {
+                return res.status(400).json({ error: 'Invalid status' });
+            }
+
+            const model = await getQuery('SELECT * FROM auto_analytical_models WHERE id = ?', [id]);
+
+            if (!model) {
+                return res.status(404).json({ error: 'Auto analytical model not found' });
+            }
+
+            await runQuery(
+                'UPDATE auto_analytical_models SET status = ?, updated_at = datetime(\'now\') WHERE id = ?',
+                [status, id]
+            );
+
+            res.json({
+                message: `Auto analytical model status updated to ${status}`,
+                status
             });
         } catch (error) {
             next(error);

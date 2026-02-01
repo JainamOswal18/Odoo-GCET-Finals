@@ -34,7 +34,6 @@ export const PurchaseOrders: React.FC = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [status, setStatus] = useState<"draft" | "confirmed" | "done" | "cancelled">("draft");
-    const [showBudgetWarning, setShowBudgetWarning] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -108,7 +107,7 @@ export const PurchaseOrders: React.FC = () => {
                 product_id: item.productId,
                 quantity: item.quantity,
                 unit_price: item.unitPrice,
-                analytical_account_id: item.analyticalAccountId || null,
+                analytical_account_id: item.analyticalAccountId && item.analyticalAccountId !== "none" ? item.analyticalAccountId : null,
             }));
 
             const payload = {
@@ -117,8 +116,10 @@ export const PurchaseOrders: React.FC = () => {
                 expected_date: data.expectedDate || null,
                 status: status,
                 notes: data.notes || null,
-                line_items: lineItemsPayload,
+                lines: lineItemsPayload,
             };
+
+            console.log('Submitting PO:', payload);
 
             if (editingId) {
                 await purchaseOrdersApi.update(editingId, payload);
@@ -130,6 +131,7 @@ export const PurchaseOrders: React.FC = () => {
             setView("list");
             reset();
             setEditingId(null);
+            setStatus("draft");
         } catch (err: any) {
             setError(err.message || 'Failed to save purchase order');
             console.error('Error saving purchase order:', err);
@@ -159,7 +161,6 @@ export const PurchaseOrders: React.FC = () => {
     const handleNew = () => {
         setEditingId(null);
         setStatus("draft");
-        setShowBudgetWarning(false);
         reset({
             orderDate: new Date().toISOString().split('T')[0],
             lineItems: [{ productId: "", quantity: 1, unitPrice: 0, analyticalAccountId: "none" }],
@@ -168,20 +169,18 @@ export const PurchaseOrders: React.FC = () => {
     };
 
     const handleConfirm = () => {
-        // First validate and submit the form
-        handleSubmit((data) => {
-            onSubmit(data);
-            setStatus("confirmed");
-            setShowBudgetWarning(true);
-        })();
+        setStatus("confirmed");
+        setTimeout(() => handleSubmit(onSubmit)(), 0);
     };
 
     const handleCancel = () => {
         setStatus("cancelled");
+        setTimeout(() => handleSubmit(onSubmit)(), 0);
     };
 
     const handleSave = () => {
-        handleSubmit(onSubmit)();
+        setStatus("draft");
+        setTimeout(() => handleSubmit(onSubmit)(), 0);
     };
 
     const handleCreateBill = (po: PurchaseOrder) => {

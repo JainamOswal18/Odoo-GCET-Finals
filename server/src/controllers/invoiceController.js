@@ -13,7 +13,7 @@ class InvoiceController {
       const invoice_number = generateUniqueNumber('INV-', lastInvoice?.invoice_number);
 
       const processedLines = await analyticalService.assignAnalyticalAccounts(
-        lines, 'sale', { customer_id }
+        lines, { customer_id }
       );
 
       const totals = calculateTotals(processedLines);
