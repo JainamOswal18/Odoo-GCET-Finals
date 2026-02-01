@@ -39,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     </button>
 
                     {/* Search */}
-                    <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-lg w-64 lg:w-80">
+                    {/* <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-lg w-64 lg:w-80">
                         <Search className="w-4 h-4 text-gray-400" />
                         <input
                             type="text"
@@ -49,16 +49,16 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                         <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-xs text-gray-400 bg-white rounded border border-gray-200">
                             ⌘K
                         </kbd>
-                    </div>
+                    </div> */}
                 </div>
 
                 {/* Right Section */}
                 <div className="flex items-center gap-2">
                     {/* Notifications */}
-                    <button className="relative p-2 rounded-lg hover:bg-gray-100 text-gray-500">
+                    {/* <button className="relative p-2 rounded-lg hover:bg-gray-100 text-gray-500">
                         <Bell className="w-5 h-5" />
                         <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-                    </button>
+                    </button> */}
 
                     {/* User Menu */}
                     <DropdownMenu.Root>

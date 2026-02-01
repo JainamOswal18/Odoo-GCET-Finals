@@ -79,6 +79,7 @@ export const VendorBills: React.FC = () => {
     } = useForm<BillFormData>({
         resolver: zodResolver(vendorBillSchema),
         defaultValues: {
+            vendorId: "",
             billDate: new Date().toISOString().split('T')[0],
             dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             lineItems: [{ productId: "", quantity: 1, unitPrice: 0, analyticalAccountId: "" }],
@@ -143,24 +144,32 @@ export const VendorBills: React.FC = () => {
         }
     };
 
-    const handleEdit = (bill: VendorBill) => {
-        setEditingId(bill.id);
-        setStatus(bill.status);
-        reset({
-            vendorId: bill.vendorId,
-            billDate: bill.billDate,
-            dueDate: bill.dueDate,
-            purchaseOrderId: bill.purchaseOrderId,
-            billReference: bill.billReference,
-            lineItems: bill.lineItems.map(item => ({
-                productId: item.productId,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                analyticalAccountId: item.analyticalAccountId || "none",
-            })),
-            notes: bill.notes,
-        });
-        setView("form");
+    const handleEdit = async (bill: VendorBill) => {
+        try {
+            const response: any = await billsApi.getById(bill.id);
+            const fullBill = response.bill;
+            const lines = response.lines || [];
+            
+            setEditingId(fullBill.id);
+            setStatus(fullBill.status);
+            reset({
+                vendorId: String(fullBill.vendorId),
+                billDate: fullBill.billDate,
+                dueDate: fullBill.dueDate,
+                purchaseOrderId: fullBill.purchaseOrderId,
+                billReference: fullBill.billReference,
+                lineItems: lines.map((item: any) => ({
+                    productId: String(item.productId),
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                    analyticalAccountId: item.analyticalAccountId ? String(item.analyticalAccountId) : "none",
+                })),
+                notes: fullBill.notes,
+            });
+            setView("form");
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch bill details');
+        }
     };
 
     const handleNew = () => {
@@ -168,6 +177,7 @@ export const VendorBills: React.FC = () => {
         setStatus("draft");
         setShowBudgetWarning(false);
         reset({
+            vendorId: "",
             billDate: new Date().toISOString().split('T')[0],
             dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             lineItems: [{ productId: "", quantity: 1, unitPrice: 0, analyticalAccountId: "none" }],

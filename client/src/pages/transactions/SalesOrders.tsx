@@ -67,6 +67,7 @@ export const SalesOrders: React.FC = () => {
     } = useForm<SOFormData>({
         resolver: zodResolver(salesOrderSchema),
         defaultValues: {
+            customerId: "",
             orderDate: new Date().toISOString().split('T')[0],
             lineItems: [{ productId: "", quantity: 1, unitPrice: 0 }],
         },
@@ -126,27 +127,37 @@ export const SalesOrders: React.FC = () => {
         }
     };
 
-    const handleEdit = (order: SalesOrder) => {
-        setEditingId(order.id);
-        setStatus(order.status);
-        reset({
-            customerId: order.customerId,
-            orderDate: order.orderDate,
-            expectedDate: order.expectedDate,
-            lineItems: order.lineItems.map(item => ({
-                productId: item.productId,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
-            })),
-            notes: order.notes,
-        });
-        setView("form");
+    const handleEdit = async (order: SalesOrder) => {
+        try {
+            // Fetch full order details with line items
+            const response: any = await salesOrdersApi.getById(order.id);
+            const fullOrder = response.salesOrder;
+            const lines = response.lines || [];
+            
+            setEditingId(fullOrder.id);
+            setStatus(fullOrder.status);
+            reset({
+                customerId: String(fullOrder.customerId),
+                orderDate: fullOrder.orderDate,
+                expectedDate: fullOrder.expectedDate,
+                lineItems: lines.map((item: any) => ({
+                    productId: String(item.productId),
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                })),
+                notes: fullOrder.notes,
+            });
+            setView("form");
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch order details');
+        }
     };
 
     const handleNew = () => {
         setEditingId(null);
         setStatus("draft");
         reset({
+            customerId: "",
             orderDate: new Date().toISOString().split('T')[0],
             lineItems: [{ productId: "", quantity: 1, unitPrice: 0 }],
         });
@@ -273,7 +284,7 @@ export const SalesOrders: React.FC = () => {
                     <Select
                         label="Customer Name"
                         options={contacts.filter(c => (c.type === "customer" || c.type === "both") || (c.contactType === "customer" || c.contactType === "both")).map(c => ({
-                            value: c.id,
+                            value: String(c.id),
                             label: c.name
                         }))}
                         value={watch("customerId")}
@@ -300,10 +311,10 @@ export const SalesOrders: React.FC = () => {
                                     <td className="p-2">{index + 1}</td>
                                     <td className="p-2">
                                         <Select
-                                            options={products.map(p => ({ value: p.id, label: p.name }))}
+                                            options={products.map(p => ({ value: String(p.id), label: p.name }))}
                                             value={watchLineItems[index]?.productId}
                                             onValueChange={(val) => {
-                                                const prod = products.find(p => p.id === val);
+                                                const prod = products.find(p => String(p.id) === val);
                                                 setValue(`lineItems.${index}.productId`, val);
                                                 if (prod) setValue(`lineItems.${index}.unitPrice`, prod.salesPrice);
                                             }}

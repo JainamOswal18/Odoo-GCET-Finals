@@ -77,6 +77,7 @@ export const CustomerInvoices: React.FC = () => {
     } = useForm<InvoiceFormData>({
         resolver: zodResolver(invoiceSchema),
         defaultValues: {
+            customerId: "",
             invoiceDate: new Date().toISOString().split('T')[0],
             lineItems: [{ productId: "", quantity: 1, unitPrice: 0, analyticalAccountId: "" }],
         },
@@ -106,29 +107,38 @@ export const CustomerInvoices: React.FC = () => {
         setStatus("draft");
         setShowBudgetWarning(false);
         reset({
+            customerId: "",
             invoiceDate: new Date().toISOString().split('T')[0],
             lineItems: [{ productId: "", quantity: 1, unitPrice: 0, analyticalAccountId: "" }],
         });
     };
 
-    const handleEdit = (invoice: CustomerInvoice) => {
-        setView("form");
-        setEditingId(invoice.id);
-        setStatus(invoice.status);
-        setShowBudgetWarning(false);
-        reset({
-            customerId: invoice.customerId,
-            reference: "",
-            invoiceDate: invoice.invoiceDate,
-            dueDate: invoice.dueDate,
-            salesOrderId: invoice.salesOrderId,
-            lineItems: invoice.lineItems.map(item => ({
-                productId: item.productId,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                analyticalAccountId: item.analyticalAccountId || "none",
-            })),
-        });
+    const handleEdit = async (invoice: CustomerInvoice) => {
+        try {
+            const response: any = await invoicesApi.getById(invoice.id);
+            const fullInvoice = response.invoice;
+            const lines = response.lines || [];
+            
+            setView("form");
+            setEditingId(fullInvoice.id);
+            setStatus(fullInvoice.status);
+            setShowBudgetWarning(false);
+            reset({
+                customerId: String(fullInvoice.customerId),
+                reference: "",
+                invoiceDate: fullInvoice.invoiceDate,
+                dueDate: fullInvoice.dueDate,
+                salesOrderId: fullInvoice.salesOrderId,
+                lineItems: lines.map((item: any) => ({
+                    productId: String(item.productId),
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                    analyticalAccountId: item.analyticalAccountId ? String(item.analyticalAccountId) : "none",
+                })),
+            });
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch invoice details');
+        }
     };
 
     const onSubmit = async (data: InvoiceFormData) => {

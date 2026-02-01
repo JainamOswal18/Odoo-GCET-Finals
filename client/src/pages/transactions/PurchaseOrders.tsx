@@ -76,6 +76,7 @@ export const PurchaseOrders: React.FC = () => {
     } = useForm<POFormData>({
         resolver: zodResolver(purchaseOrderSchema),
         defaultValues: {
+            vendorId: "",
             orderDate: new Date().toISOString().split('T')[0],
             lineItems: [{ productId: "", quantity: 1, unitPrice: 0, analyticalAccountId: "none" }],
         },
@@ -141,28 +142,37 @@ export const PurchaseOrders: React.FC = () => {
         }
     };
 
-    const handleEdit = (po: PurchaseOrder) => {
-        setEditingId(po.id);
-        setStatus(po.status);
-        reset({
-            vendorId: po.vendorId,
-            orderDate: po.orderDate,
-            expectedDate: po.expectedDate,
-            lineItems: po.lineItems.map(item => ({
-                productId: item.productId,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                analyticalAccountId: item.analyticalAccountId || "none",
-            })),
-            notes: po.notes,
-        });
-        setView("form");
+    const handleEdit = async (po: PurchaseOrder) => {
+        try {
+            const response: any = await purchaseOrdersApi.getById(po.id);
+            const fullPo = response.purchaseOrder;
+            const lines = response.lines || [];
+            
+            setEditingId(fullPo.id);
+            setStatus(fullPo.status);
+            reset({
+                vendorId: String(fullPo.vendorId),
+                orderDate: fullPo.orderDate,
+                expectedDate: fullPo.expectedDate,
+                lineItems: lines.map((item: any) => ({
+                    productId: String(item.productId),
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                    analyticalAccountId: item.analyticalAccountId ? String(item.analyticalAccountId) : "none",
+                })),
+                notes: fullPo.notes,
+            });
+            setView("form");
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch purchase order details');
+        }
     };
 
     const handleNew = () => {
         setEditingId(null);
         setStatus("draft");
         reset({
+            vendorId: "",
             orderDate: new Date().toISOString().split('T')[0],
             lineItems: [{ productId: "", quantity: 1, unitPrice: 0, analyticalAccountId: "none" }],
         });
@@ -460,12 +470,12 @@ export const PurchaseOrders: React.FC = () => {
                                         <td className="p-2">
                                             <Select
                                                 options={products.map(p => ({
-                                                    value: p.id,
+                                                    value: String(p.id),
                                                     label: p.name
                                                 }))}
                                                 value={watchLineItems[index]?.productId}
                                                 onValueChange={(val) => {
-                                                    const prod = products.find(p => p.id === val);
+                                                    const prod = products.find(p => String(p.id) === val);
                                                     setValue(`lineItems.${index}.productId`, val);
                                                     if (prod) {
                                                         setValue(`lineItems.${index}.unitPrice`, prod.purchasePrice);
@@ -479,7 +489,7 @@ export const PurchaseOrders: React.FC = () => {
                                                 options={[
                                                     { value: "none", label: "None" },
                                                     ...analyticalAccounts.map(a => ({
-                                                        value: a.id,
+                                                        value: String(a.id),
                                                         label: a.name
                                                     }))
                                                 ]}
