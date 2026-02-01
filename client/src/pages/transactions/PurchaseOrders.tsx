@@ -99,7 +99,7 @@ export const PurchaseOrders: React.FC = () => {
         return sum + calculateLineTotal(item.quantity || 0, item.unitPrice || 0);
     }, 0) || 0;
 
-    const onSubmit = async (data: POFormData) => {
+    const onSubmit = async (data: POFormData, orderStatus?: string) => {
         try {
             setLoading(true);
             setError(null);
@@ -115,7 +115,7 @@ export const PurchaseOrders: React.FC = () => {
                 vendor_id: data.vendorId,
                 order_date: data.orderDate,
                 expected_date: data.expectedDate || null,
-                status: status,
+                status: orderStatus || status,
                 notes: data.notes || null,
                 lines: lineItemsPayload,
             };
@@ -169,19 +169,19 @@ export const PurchaseOrders: React.FC = () => {
         setView("form");
     };
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
         setStatus("confirmed");
-        setTimeout(() => handleSubmit(onSubmit)(), 0);
+        await handleSubmit((data) => onSubmit(data, "confirmed"))();
     };
 
-    const handleCancel = () => {
+    const handleCancel = async () => {
         setStatus("cancelled");
-        setTimeout(() => handleSubmit(onSubmit)(), 0);
+        await handleSubmit((data) => onSubmit(data, "cancelled"))();
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         setStatus("draft");
-        setTimeout(() => handleSubmit(onSubmit)(), 0);
+        await handleSubmit((data) => onSubmit(data, "draft"))();
     };
 
     const handleCreateBill = (po: PurchaseOrder) => {
