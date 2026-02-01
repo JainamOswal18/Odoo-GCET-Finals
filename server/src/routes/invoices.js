@@ -22,6 +22,8 @@ router.get('/', invoiceController.getAll);
 
 router.get('/:id', invoiceController.getById);
 
+router.put('/:id', invoiceController.update);
+
 router.post('/:id/post', invoiceController.post);
 
 export default router;

@@ -1,10 +1,10 @@
-import React, { useState } from "react";
-import { Plus, Search, Filter, Home, ArrowLeft, Save } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, Search, Filter, Home, ArrowLeft, Save, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Card, Select, Badge } from "@/components/ui";
-import { MOCK_CONTACTS } from "@/lib/mock";
+import { paymentsApi, contactsApi, invoicesApi, billsApi } from "@/lib/api";
 
 const paymentSchema = z.object({
     paymentType: z.enum(["send", "receive"], { message: "Payment type is required" }),
@@ -13,67 +13,49 @@ const paymentSchema = z.object({
     paymentDate: z.string().min(1, "Payment date is required"),
     paymentMethod: z.enum(["cash", "bank", "upi", "razorpay", "cheque"], { message: "Payment method is required" }),
     referenceType: z.enum(["invoice", "bill"], { message: "Reference type is required" }),
-    referenceId: z.string().min(1, "Reference invoice/bill is required"),
+    referenceId: z.string().min(1, "Reference invoice/bill is required").optional().or(z.literal("")),
     notes: z.string().optional(),
 });
 
 type PaymentFormData = z.infer<typeof paymentSchema>;
 
-interface Payment {
-    id: string;
-    paymentNumber: string;
-    paymentType: "send" | "receive";
-    partnerId: string;
-    partnerName: string;
-    amount: number;
-    paymentDate: string;
-    paymentMethod: "cash" | "bank" | "upi" | "razorpay" | "cheque";
-    referenceType: "invoice" | "bill";
-    referenceId: string;
-    referenceNumber: string;
-    reference?: string; // Backend field name
-    status: "draft" | "confirmed" | "cancelled";
-    notes?: string;
-    createdAt: string;
-    updatedAt: string;
-}
-
-const MOCK_PAYMENTS: Payment[] = [
-    {
-        id: "1",
-        paymentNumber: "PAY/25/0001",
-        paymentType: "receive",
-        partnerId: "1",
-        partnerName: "John Doe",
-        amount: 24780,
-        paymentDate: "2026-01-25",
-        paymentMethod: "bank",
-        referenceType: "invoice",
-        referenceId: "1",
-        referenceNumber: "INV/2025/0001",
-        status: "confirmed",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    },
-];
-
-// Mock invoices and bills for reference dropdown
-const MOCK_INVOICE_REFERENCES = [
-    { id: "1", number: "INV/2025/0001", customer: "John Doe", amountDue: 24780 },
-    { id: "2", number: "INV/2025/0002", customer: "Jane Smith", amountDue: 15000 },
-];
-
-const MOCK_BILL_REFERENCES = [
-    { id: "1", number: "BILL/2025/0001", vendor: "Azure Interior", amountDue: 16350 },
-    { id: "2", number: "BILL/2025/0002", vendor: "Oak Suppliers", amountDue: 25000 },
-];
-
 export const Payments: React.FC = () => {
     const [view, setView] = useState<"list" | "form">("list");
-    const [payments, setPayments] = useState<Payment[]>(MOCK_PAYMENTS);
+    const [payments, setPayments] = useState<any[]>([]);
+    const [contacts, setContacts] = useState<any[]>([]);
+    const [invoices, setInvoices] = useState<any[]>([]);
+    const [bills, setBills] = useState<any[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [status, setStatus] = useState<"draft" | "confirmed" | "cancelled">("draft");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const [paymentsData, contactsData, invoicesData, billsData] = await Promise.all([
+                paymentsApi.getAll(),
+                contactsApi.getAll(),
+                invoicesApi.getAll(),
+                billsApi.getAll()
+            ]);
+            setPayments(paymentsData);
+            setContacts(contactsData);
+            setInvoices(invoicesData);
+            setBills(billsData);
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch data');
+            console.error('Error fetching payments data:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const {
         register,
@@ -99,26 +81,26 @@ export const Payments: React.FC = () => {
     React.useEffect(() => {
         if (watchReferenceId) {
             if (watchReferenceType === "invoice") {
-                const invoice = MOCK_INVOICE_REFERENCES.find(i => i.id === watchReferenceId);
-                if (invoice) {
-                    const customer = MOCK_CONTACTS.find(c => c.name === invoice.customer);
+                const selectedInvoice = invoices.find((i: any) => String(i.id) === String(watchReferenceId));
+                if (selectedInvoice) {
+                    const customer = contacts.find((c: any) => String(c.id) === String(selectedInvoice.customerId));
                     if (customer) {
-                        setValue("partnerId", customer.id);
+                        setValue("partnerId", String(customer.id));
                     }
-                    setValue("amount", invoice.amountDue);
+                    setValue("amount", selectedInvoice.amountDue || 0);
                 }
             } else if (watchReferenceType === "bill") {
-                const bill = MOCK_BILL_REFERENCES.find(b => b.id === watchReferenceId);
-                if (bill) {
-                    const vendor = MOCK_CONTACTS.find(v => v.name === bill.vendor);
+                const selectedBill = bills.find((b: any) => String(b.id) === String(watchReferenceId));
+                if (selectedBill) {
+                    const vendor = contacts.find((v: any) => String(v.id) === String(selectedBill.vendorId));
                     if (vendor) {
-                        setValue("partnerId", vendor.id);
+                        setValue("partnerId", String(vendor.id));
                     }
-                    setValue("amount", bill.amountDue);
+                    setValue("amount", selectedBill.amountDue || 0);
                 }
             }
         }
-    }, [watchReferenceId, watchReferenceType, setValue]);
+    }, [watchReferenceId, watchReferenceType, setValue, invoices, bills, contacts]);
 
     const handleNew = () => {
         setView("form");
@@ -132,85 +114,53 @@ export const Payments: React.FC = () => {
         });
     };
 
-    const handleEdit = (payment: Payment) => {
+    const handleEdit = (payment: any) => {
         setView("form");
         setEditingId(payment.id);
         setStatus(payment.status);
         reset({
             paymentType: payment.paymentType,
-            partnerId: payment.partnerId,
+            partnerId: payment.partnerId ? String(payment.partnerId) : "",
             amount: payment.amount,
             paymentDate: payment.paymentDate,
             paymentMethod: payment.paymentMethod,
-            referenceType: payment.referenceType,
-            referenceId: payment.referenceId,
+            referenceType: payment.referenceType || "invoice",
+            referenceId: payment.referenceId ? String(payment.referenceId) : "",
             notes: payment.notes,
         });
     };
 
-    const onSubmit = (data: PaymentFormData) => {
-        const partner = MOCK_CONTACTS.find(c => c.id === data.partnerId);
-        let referenceNumber = "";
+    const onSubmit = async (data: PaymentFormData) => {
+        try {
+            setLoading(true);
+            setError(null);
 
-        if (data.referenceType === "invoice") {
-            const invoice = MOCK_INVOICE_REFERENCES.find(i => i.id === data.referenceId);
-            referenceNumber = invoice?.number || "";
-        } else {
-            const bill = MOCK_BILL_REFERENCES.find(b => b.id === data.referenceId);
-            referenceNumber = bill?.number || "";
-        }
-
-        if (editingId) {
-            setPayments(payments.map(payment =>
-                payment.id === editingId
-                    ? {
-                        ...payment,
-                        paymentType: data.paymentType,
-                        partnerId: data.partnerId,
-                        partnerName: partner?.name || "",
-                        amount: data.amount,
-                        paymentDate: data.paymentDate,
-                        paymentMethod: data.paymentMethod,
-                        referenceType: data.referenceType,
-                        referenceId: data.referenceId,
-                        referenceNumber,
-                        status,
-                        notes: data.notes,
-                        updatedAt: new Date().toISOString(),
-                    }
-                    : payment
-            ));
-        } else {
-            const newPayment: Payment = {
-                id: `${payments.length + 1}`,
-                paymentNumber: `PAY/25/${String(payments.length + 1).padStart(4, '0')}`,
-                paymentType: data.paymentType,
-                partnerId: data.partnerId,
-                partnerName: partner?.name || "",
+            const payload = {
+                payment_type: data.paymentType === 'receive' ? 'inbound' : 'outbound',
+                contact_id: data.partnerId,
+                payment_date: data.paymentDate,
                 amount: data.amount,
-                paymentDate: data.paymentDate,
-                paymentMethod: data.paymentMethod,
-                referenceType: data.referenceType,
-                referenceId: data.referenceId,
-                referenceNumber,
-                status,
-                notes: data.notes,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+                payment_method: data.paymentMethod,
+                reference: data.referenceId,
+                notes: data.notes || null,
             };
-            setPayments([...payments, newPayment]);
-        }
 
-        // TODO: Update the invoice/bill payment status and amounts
-        // This would be handled by the backend in a real application
-        if (status === "confirmed") {
-            console.log("Updating payment status for:", data.referenceType, data.referenceId);
-            // Update invoice.amountPaid += data.amount
-            // Update invoice.amountDue = invoice.grandTotal - invoice.amountPaid
-            // Update invoice.paymentStatus based on amountDue
-        }
+            if (editingId) {
+                await paymentsApi.update(editingId, payload);
+            } else {
+                await paymentsApi.create(payload);
+            }
 
-        setView("list");
+            await fetchData();
+            setView("list");
+            reset();
+            setEditingId(null);
+        } catch (err: any) {
+            setError(err.message || 'Failed to save payment');
+            console.error('Error saving payment:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleConfirm = () => {
@@ -230,6 +180,11 @@ export const Payments: React.FC = () => {
     if (view === "list") {
         return (
             <div className="space-y-6">
+                {error && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                        {error}
+                    </div>
+                )}
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Payments</h1>
@@ -257,6 +212,11 @@ export const Payments: React.FC = () => {
                         </Button>
                     </div>
 
+                    {loading && payments.length === 0 ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                        </div>
+                    ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-gray-50 text-gray-700 font-medium">
@@ -321,6 +281,7 @@ export const Payments: React.FC = () => {
                             </tbody>
                         </table>
                     </div>
+                    )}
                 </Card>
             </div>
         );
@@ -428,13 +389,13 @@ export const Payments: React.FC = () => {
                                     <Select
                                         options={
                                             watchReferenceType === "invoice"
-                                                ? MOCK_INVOICE_REFERENCES.map(i => ({
-                                                    value: i.id,
-                                                    label: `${i.number} - ${i.customer} (Due: ₹${i.amountDue.toLocaleString()})`
+                                                ? invoices.map((i: any) => ({
+                                                    value: String(i.id),
+                                                    label: `${i.invoiceNumber} - ${i.customerName} (Due: ₹${(i.amountDue || 0).toLocaleString()})`
                                                 }))
-                                                : MOCK_BILL_REFERENCES.map(b => ({
-                                                    value: b.id,
-                                                    label: `${b.number} - ${b.vendor} (Due: ₹${b.amountDue.toLocaleString()})`
+                                                : bills.map((b: any) => ({
+                                                    value: String(b.id),
+                                                    label: `${b.billNumber} - ${b.vendorName} (Due: ₹${(b.amountDue || 0).toLocaleString()})`
                                                 }))
                                         }
                                         value={watch("referenceId")}
@@ -453,8 +414,8 @@ export const Payments: React.FC = () => {
                                         Partner <span className="text-red-500">*</span>
                                     </label>
                                     <Select
-                                        options={MOCK_CONTACTS.map(c => ({
-                                            value: c.id,
+                                        options={contacts.map((c: any) => ({
+                                            value: String(c.id),
                                             label: c.name
                                         }))}
                                         value={watch("partnerId")}

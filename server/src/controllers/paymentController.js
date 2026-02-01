@@ -84,6 +84,41 @@ class PaymentController {
       next(error);
     }
   }
+
+  async update(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { payment_type, contact_id, payment_date, amount, payment_method, reference, allocations, notes } = req.body;
+
+      const payment = await getQuery('SELECT * FROM payments WHERE id = ?', [id]);
+      if (!payment) {
+        return res.status(404).json({ error: 'Payment not found' });
+      }
+
+      // Update payment
+      await runQuery(
+        `UPDATE payments SET payment_type = ?, contact_id = ?, payment_date = ?,
+         amount = ?, payment_method = ?, reference = ?, notes = ?, updated_at = datetime('now')
+         WHERE id = ?`,
+        [payment_type, contact_id, payment_date, amount, payment_method, reference, notes, id]
+      );
+
+      // Update allocations if provided
+      if (allocations && allocations.length > 0) {
+        // Delete existing allocations
+        await runQuery('DELETE FROM payment_allocations WHERE payment_id = ?', [id]);
+
+        // Add new allocations
+        await paymentService.allocatePayment(id, allocations);
+      }
+
+      const updatedPayment = await getQuery('SELECT * FROM payments WHERE id = ?', [id]);
+
+      res.json({ message: 'Payment updated successfully', payment: updatedPayment });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new PaymentController();
