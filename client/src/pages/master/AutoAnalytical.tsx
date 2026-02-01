@@ -43,9 +43,12 @@ export const AutoAnalytical: React.FC = () => {
                 autoAnalyticalModelsApi.getAll(),
                 analyticalAccountsApi.getAll()
             ]);
+            console.log('Models fetched:', modelsData);
+            console.log('Analytical accounts fetched:', accountsData);
             setModels(modelsData);
             setAnalyticalAccounts(accountsData);
         } catch (err: any) {
+            console.error('Fetch error:', err);
             setError(err.message || 'Failed to fetch data');
         } finally {
             setLoading(false);

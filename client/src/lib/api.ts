@@ -202,8 +202,9 @@ export const productsApi = {
 // ANALYTICAL ACCOUNTS API
 // ============================================================================
 export const analyticalAccountsApi = {
-  getAll: async (): Promise<any[]> => {
-    const response = await apiRequest(API_ENDPOINTS.analyticalAccounts);
+  getAll: async (params?: { search?: string }): Promise<any[]> => {
+    const queryParams = params?.search ? `?search=${encodeURIComponent(params.search)}` : '';
+    const response = await apiRequest(`${API_ENDPOINTS.analyticalAccounts}${queryParams}`);
     const data = await handleApiResponse(response);
     return extractDataArray(data, 'accounts');
   },
@@ -244,7 +245,7 @@ export const analyticalAccountsApi = {
 // ============================================================================
 export const budgetsApi = {
   getAll: async (): Promise<any[]> => {
-    const response = await apiRequest(API_ENDPOINTS.budgets);
+    const response = await apiRequest(`${API_ENDPOINTS.budgets}?limit=100`);
     const data = await handleApiResponse(response);
     return extractDataArray(data, 'budgets');
   },

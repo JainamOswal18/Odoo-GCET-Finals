@@ -462,11 +462,6 @@ export const VendorBills: React.FC = () => {
                         <Button variant="outline" className="ml-auto">
                             Budget
                         </Button>
-                        <div className="flex items-center space-x-2">
-                            <Button variant="ghost" size="sm" className={status === "draft" ? "bg-gray-100" : ""}>Draft</Button>
-                            <Button variant="ghost" size="sm" className={status === "confirmed" ? "bg-pink-100" : ""}>Confirm</Button>
-                            <Button variant="ghost" size="sm" className={status === "cancelled" ? "bg-gray-100" : ""}>Cancelled</Button>
-                        </div>
                     </div>
                 </div>
             </div>

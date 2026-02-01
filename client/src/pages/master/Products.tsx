@@ -262,8 +262,7 @@ export const Products: React.FC = () => {
                                         <th className="px-4 py-3 rounded-tl-lg">Product Name</th>
                                         <th className="px-4 py-3">Category</th>
                                         <th className="px-4 py-3 text-right">Sales Price</th>
-                                        <th className="px-4 py-3 text-right">Cost Price</th>
-                                        <th className="px-4 py-3 rounded-tr-lg">SKU</th>
+                                        <th className="px-4 py-3 text-right rounded-tr-lg">Cost Price</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
@@ -286,9 +285,6 @@ export const Products: React.FC = () => {
                                             </td>
                                             <td className="px-4 py-3 text-right text-gray-500">
                                                 ₹{(product.purchasePrice || product.costPrice || 0).toFixed(2)}
-                                            </td>
-                                            <td className="px-4 py-3 text-gray-400 font-mono text-xs">
-                                                {product.sku || product.internalReference || '-'}
                                             </td>
                                         </tr>
                                     ))}

@@ -170,12 +170,19 @@ CREATE TABLE IF NOT EXISTS budget_lines (
 -- Auto Analytical Models Table
 CREATE TABLE IF NOT EXISTS auto_analytical_models (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name VARCHAR(255) NOT NULL,
-    model_type VARCHAR(50) NOT NULL,
-    priority INTEGER DEFAULT 10,
+    status VARCHAR(20) DEFAULT 'new',
+    partner_tag VARCHAR(255),
+    product_category VARCHAR(255),
+    partner_id INTEGER,
+    product_id INTEGER,
+    analytical_account_id INTEGER NOT NULL,
     active BOOLEAN DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (partner_id) REFERENCES contacts(id),
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    FOREIGN KEY (analytical_account_id) REFERENCES analytical_accounts(id),
+    CHECK (status IN ('new', 'confirm', 'archived'))
 );
 
 -- Auto Analytical Model Conditions Table

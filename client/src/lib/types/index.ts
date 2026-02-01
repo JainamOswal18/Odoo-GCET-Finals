@@ -101,9 +101,14 @@ export interface Budget {
     lines?: BudgetLine[]; // Budget lines array
     revisions?: BudgetRevision[];
     isActive?: boolean; // Frontend field name
-    active?: boolean; // Backend field name
+    active?: number | boolean; // Backend field name (SQLite returns 0/1)
     createdAt?: string;
     updatedAt?: string;
+    createdBy?: string;
+    // Revision tracking
+    revisedBudgetId?: string;
+    originalBudgetId?: string;
+    originalBudgetName?: string;
 }
 
 export interface BudgetLine {
