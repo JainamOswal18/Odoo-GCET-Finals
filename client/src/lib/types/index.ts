@@ -98,6 +98,10 @@ export interface Budget {
     variance?: number;
     status?: string;
     revisions?: BudgetRevision[];
+    // Revision tracking fields
+    revisedBudgetId?: string;
+    originalBudgetId?: string;
+    originalBudgetName?: string;
     isActive?: boolean;
     active?: boolean;
     createdAt?: string;
