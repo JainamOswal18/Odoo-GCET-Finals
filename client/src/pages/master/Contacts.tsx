@@ -5,9 +5,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Input, Card, Select, ToastContainer } from "@/components/ui";
+import { Autocomplete } from "@/components/ui/Autocomplete";
 import type { ToastType } from "@/components/ui";
 import { contactsApi } from "@/lib/api";
-import type { Contact } from "@/lib/types";
+import { regionsApi } from "@/lib/regionsApi";
+import type { Contact, Country, State, City } from "@/lib/types";
 import { getImageUrl } from "@/lib/utils";
 
 // Schema matching the wireframe fields
@@ -37,6 +39,12 @@ export const Contacts: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
+    
+    // Region selection states
+    const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
+    const [selectedState, setSelectedState] = useState<State | null>(null);
+    const [selectedCity, setSelectedCity] = useState<City | null>(null);
+    
     const navigate = useNavigate();
 
     const showToast = (message: string, type: ToastType) => {
@@ -637,27 +645,92 @@ export const Contacts: React.FC = () => {
                                 error={errors.address?.message}
                                 {...register("address")}
                             />
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input
-                                    placeholder="City"
-                                    error={errors.city?.message}
-                                    {...register("city")}
-                                />
-                                <Input
-                                    placeholder="State"
-                                    error={errors.state?.message}
-                                    {...register("state")}
-                                />
-                                <Input
-                                    placeholder="Country"
-                                    error={errors.country?.message}
-                                    {...register("country")}
-                                />
-                                <Input
-                                    placeholder="Pincode"
-                                    error={errors.pincode?.message}
-                                    {...register("pincode")}
-                                />
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <Autocomplete
+                                        label="Country"
+                                        placeholder="Search country..."
+                                        value={watch("country") || ""}
+                                        onChange={(value, option) => {
+                                            setValue("country", value);
+                                            if (option) {
+                                                setSelectedCountry(option as any);
+                                                // Reset state and city when country changes
+                                                setValue("state", "");
+                                                setValue("city", "");
+                                                setSelectedState(null);
+                                                setSelectedCity(null);
+                                            }
+                                        }}
+                                        onSearch={async (search) => {
+                                            const countries = await regionsApi.searchCountries(search);
+                                            return countries.map(c => ({
+                                                id: c.id,
+                                                label: c.name,
+                                                value: c.name,
+                                            }));
+                                        }}
+                                        error={errors.country?.message}
+                                    />
+                                    
+                                    <Autocomplete
+                                        label="State"
+                                        placeholder={selectedCountry ? "Search state..." : "Select country first"}
+                                        value={watch("state") || ""}
+                                        onChange={(value, option) => {
+                                            setValue("state", value);
+                                            if (option) {
+                                                setSelectedState(option as any);
+                                                // Reset city when state changes
+                                                setValue("city", "");
+                                                setSelectedCity(null);
+                                            }
+                                        }}
+                                        onSearch={async (search) => {
+                                            if (!selectedCountry) return [];
+                                            const states = await regionsApi.getStatesByCountry(selectedCountry.id as number, search);
+                                            return states.map(s => ({
+                                                id: s.id,
+                                                label: s.name,
+                                                value: s.name,
+                                            }));
+                                        }}
+                                        disabled={!selectedCountry}
+                                        error={errors.state?.message}
+                                    />
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <Autocomplete
+                                        label="City"
+                                        placeholder={selectedState ? "Search city..." : "Select state first"}
+                                        value={watch("city") || ""}
+                                        onChange={(value, option) => {
+                                            setValue("city", value);
+                                            if (option) {
+                                                setSelectedCity(option as any);
+                                            }
+                                        }}
+                                        onSearch={async (search) => {
+                                            if (!selectedState) return [];
+                                            const cities = await regionsApi.getCitiesByState(selectedState.id as number, search);
+                                            return cities.map(c => ({
+                                                id: c.id,
+                                                label: c.name,
+                                                value: c.name,
+                                            }));
+                                        }}
+                                        disabled={!selectedState}
+                                        error={errors.city?.message}
+                                    />
+                                    
+                                    <Input
+                                        label="Pincode"
+                                        placeholder="Pincode"
+                                        error={errors.pincode?.message}
+                                        {...register("pincode")}
+                                    />
+                                </div>
                             </div>
                         </div>
 

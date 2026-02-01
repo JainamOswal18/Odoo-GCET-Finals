@@ -400,3 +400,34 @@ export interface RazorpayResponse {
     razorpay_signature: string;
 }
 
+// Region Types
+export interface Country {
+    id: number;
+    iso2: string;
+    iso3: string;
+    name: string;
+    phone_code: string;
+    phoneCode?: string; // Alternative
+    currency?: string;
+    flag?: string;
+}
+
+export interface State {
+    id: number;
+    country_id: number;
+    countryId?: number; // Alternative
+    name: string;
+    state_code?: string;
+    stateCode?: string; // Alternative
+}
+
+export interface City {
+    id: number;
+    state_id: number;
+    stateId?: number; // Alternative
+    country_id: number;
+    countryId?: number; // Alternative
+    name: string;
+}
+
+

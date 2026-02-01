@@ -251,9 +251,9 @@ export const Payments: React.FC = () => {
                                                 {payment.paymentType === "receive" ? "Receive" : "Send"}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 text-gray-900">{payment.partnerName}</td>
+                                        <td className="px-4 py-3 text-gray-900">{payment.contactName || payment.partnerName || '-'}</td>
                                         <td className="px-4 py-3 text-gray-600">
-                                            {payment.referenceNumber}
+                                            {payment.reference || payment.referenceNumber || '-'}
                                         </td>
                                         <td className="px-4 py-3 text-gray-500">
                                             {new Date(payment.paymentDate).toLocaleDateString()}

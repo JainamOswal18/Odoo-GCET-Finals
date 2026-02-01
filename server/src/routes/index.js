@@ -13,6 +13,7 @@ import billRoutes from './bills.js';
 import paymentRoutes from './payments.js';
 import reportRoutes from './reports.js';
 import portalRoutes from './portal.js';
+import regionRoutes from './regions.js';
 
 const router = express.Router();
 
@@ -29,6 +30,7 @@ router.use('/bills', billRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/reports', reportRoutes);
 router.use('/portal', portalRoutes);
+router.use('/regions', regionRoutes);
 
 router.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
