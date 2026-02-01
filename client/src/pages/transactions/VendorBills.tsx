@@ -88,6 +88,7 @@ export const VendorBills: React.FC = () => {
                 productsApi.getAll(),
                 analyticalAccountsApi.getAll()
             ]);
+            console.log('Contacts fetched:', contactsData);
             setBills(billsData as VendorBill[]);
             setPurchaseOrders(posData);
             setContacts(contactsData);
@@ -490,7 +491,7 @@ export const VendorBills: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                     <Select
                         label="Vendor Name"
-                        options={contacts.filter((c: any) => c.type === "vendor" || c.contactType === "vendor" || c.type === "both" || c.contactType === "both").map((c: any) => ({
+                        options={contacts.map((c: Contact) => ({
                             value: String(c.id),
                             label: c.name
                         }))}
