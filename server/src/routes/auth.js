@@ -89,12 +89,13 @@ router.post('/register',
     body('loginId')
       .trim()
       .notEmpty().withMessage('Login ID is required')
-      .isLength({ min: 6, max: 12 }).withMessage('Login ID must be 6-12 characters')
+      .isLength({ min: 6 }).withMessage('Login ID must be at least 6 characters')
       .matches(/^[a-zA-Z0-9_]+$/).withMessage('Login ID can only contain letters, numbers, and underscores'),
     body('email')
       .isEmail().withMessage('Valid email is required')
       .normalizeEmail(),
     body('password')
+      .optional()
       .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
       .matches(/[a-z]/).withMessage('Password must contain at least one lowercase letter')
       .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter')
@@ -120,7 +121,7 @@ router.post('/portal/create',
     body('loginId')
       .trim()
       .notEmpty().withMessage('Login ID is required')
-      .isLength({ min: 6, max: 12 }).withMessage('Login ID must be 6-12 characters')
+      .isLength({ min: 6 }).withMessage('Login ID must be at least 6 characters')
       .matches(/^[a-zA-Z0-9_]+$/).withMessage('Login ID can only contain letters, numbers, and underscores'),
     body('email')
       .isEmail().withMessage('Valid email is required')

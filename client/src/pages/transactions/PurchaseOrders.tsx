@@ -191,8 +191,8 @@ export const PurchaseOrders: React.FC = () => {
     };
 
     const filteredOrders = orders.filter((o) =>
-        o.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        o.vendorName.toLowerCase().includes(searchTerm.toLowerCase())
+        (o.orderNumber || o.poNumber || '')?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (o.vendorName || '')?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     if (loading && orders.length === 0) {
@@ -258,14 +258,14 @@ export const PurchaseOrders: React.FC = () => {
                                         onClick={() => handleEdit(po)}
                                     >
                                         <td className="px-4 py-3 font-medium text-indigo-600">
-                                            {po.orderNumber}
+                                            {po.orderNumber || po.poNumber}
                                         </td>
                                         <td className="px-4 py-3 text-gray-900">{po.vendorName}</td>
                                         <td className="px-4 py-3 text-gray-500">
                                             {new Date(po.orderDate).toLocaleDateString()}
                                         </td>
                                         <td className="px-4 py-3 text-right font-medium text-gray-900">
-                                            ₹{po.grandTotal.toLocaleString()}
+                                            ₹{(po.grandTotal || po.totalAmount || 0).toLocaleString()}
                                         </td>
                                         <td className="px-4 py-3">
                                             <span

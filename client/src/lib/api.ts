@@ -318,9 +318,9 @@ export const autoAnalyticalModelsApi = {
 // ============================================================================
 export const purchaseOrdersApi = {
   getAll: async () => {
-    const response = await apiRequest(API_ENDPOINTS.purchaseOrders);
+    const response = await apiRequest(`${API_ENDPOINTS.purchaseOrders}?limit=100`);
     const data = await handleApiResponse(response);
-    return extractDataArray(data, 'orders');
+    return extractDataArray(data, 'purchaseOrders');
   },
   getById: async (id: string) => {
     const response = await apiRequest(`${API_ENDPOINTS.purchaseOrders}/${id}`);
@@ -359,7 +359,7 @@ export const purchaseOrdersApi = {
 // ============================================================================
 export const billsApi = {
   getAll: async () => {
-    const response = await apiRequest(API_ENDPOINTS.bills);
+    const response = await apiRequest(`${API_ENDPOINTS.bills}?limit=100`);
     const data = await handleApiResponse(response);
     return extractDataArray(data, 'bills');
   },
@@ -400,9 +400,9 @@ export const billsApi = {
 // ============================================================================
 export const salesOrdersApi = {
   getAll: async () => {
-    const response = await apiRequest(API_ENDPOINTS.salesOrders);
+    const response = await apiRequest(`${API_ENDPOINTS.salesOrders}?limit=100`);
     const data = await handleApiResponse(response);
-    return extractDataArray(data, 'orders');
+    return extractDataArray(data, 'salesOrders');
   },
   getById: async (id: string) => {
     const response = await apiRequest(`${API_ENDPOINTS.salesOrders}/${id}`);
@@ -441,7 +441,7 @@ export const salesOrdersApi = {
 // ============================================================================
 export const invoicesApi = {
   getAll: async () => {
-    const response = await apiRequest(API_ENDPOINTS.invoices);
+    const response = await apiRequest(`${API_ENDPOINTS.invoices}?limit=100`);
     const data = await handleApiResponse(response);
     return extractDataArray(data, 'invoices');
   },
@@ -482,7 +482,7 @@ export const invoicesApi = {
 // ============================================================================
 export const paymentsApi = {
   getAll: async () => {
-    const response = await apiRequest(API_ENDPOINTS.payments);
+    const response = await apiRequest(`${API_ENDPOINTS.payments}?limit=100`);
     const data = await handleApiResponse(response);
     return extractDataArray(data, 'payments');
   },

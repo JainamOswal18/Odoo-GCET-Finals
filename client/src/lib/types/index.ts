@@ -36,6 +36,7 @@ export interface Contact {
     tags?: string[];
     image?: string;
     imageUrl?: string; // Backend field name (image_url)
+    companyLogoUrl?: string; // Backend field name (company_logo_url)
     gstNumber?: string; // Frontend field name
     taxId?: string; // Backend field name (tax_id)
     isActive?: boolean; // Frontend field name
@@ -169,7 +170,8 @@ export type PaymentStatus = "paid" | "partial" | "unpaid";
 // Purchase Order
 export interface PurchaseOrder {
     id: string;
-    orderNumber: string;
+    poNumber: string; // Backend field name (po_number) - PRIMARY
+    orderNumber?: string; // Alternative field name for compatibility
     vendorId: string;
     vendorName: string;
     orderDate: string;
@@ -178,7 +180,9 @@ export interface PurchaseOrder {
     lineItems: LineItem[];
     subtotal: number;
     taxTotal: number;
+    taxAmount?: number; // Backend field name (tax_amount)
     grandTotal: number;
+    totalAmount?: number; // Backend field name (total_amount) - PRIMARY
     notes?: string;
     createdAt: string;
     updatedAt: string;
@@ -201,6 +205,7 @@ export interface VendorBill {
     subtotal: number;
     taxTotal: number;
     grandTotal: number;
+    totalAmount?: number; // Backend field name (total_amount), same as grandTotal
     amountPaid: number;
     amountDue: number;
     notes?: string;
@@ -211,16 +216,20 @@ export interface VendorBill {
 // Sales Order
 export interface SalesOrder {
     id: string;
-    orderNumber: string;
+    soNumber: string; // Backend field name (so_number) - PRIMARY
+    orderNumber?: string; // Alternative field name for compatibility
     customerId: string;
     customerName: string;
     orderDate: string;
     expectedDate?: string;
+    deliveryDate?: string; // Backend field name (delivery_date)
     status: OrderStatus;
     lineItems: LineItem[];
     subtotal: number;
     taxTotal: number;
+    taxAmount?: number; // Backend field name (tax_amount)
     grandTotal: number;
+    totalAmount?: number; // Backend field name (total_amount) - PRIMARY
     notes?: string;
     createdAt: string;
     updatedAt: string;
@@ -253,9 +262,11 @@ export interface CustomerInvoice {
 export interface Payment {
     id: string;
     paymentNumber: string;
+    referenceNumber?: string; // Alternative field name, same as reference
     type: "incoming" | "outgoing";
     contactId: string;
     contactName: string;
+    partnerName?: string; // Alternative field name for contactName
     invoiceId?: string;
     invoiceNumber?: string;
     billId?: string;

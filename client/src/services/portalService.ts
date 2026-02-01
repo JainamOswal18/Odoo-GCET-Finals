@@ -12,7 +12,7 @@ export const portalService = {
      */
     async getMyInvoices(): Promise<PortalInvoice[]> {
         try {
-            const token = localStorage.getItem("shiv_auth_token");
+            const token = localStorage.getItem("token");
             const response = await fetch(`${API_BASE}/portal/invoices`, {
                 headers: {
                     "Authorization": `Bearer ${token}`,
@@ -38,7 +38,7 @@ export const portalService = {
      */
     async getInvoiceById(id: string): Promise<PortalInvoice | null> {
         try {
-            const token = localStorage.getItem("shiv_auth_token");
+            const token = localStorage.getItem("token");
             const response = await fetch(`${API_BASE}/portal/invoices/${id}`, {
                 headers: {
                     "Authorization": `Bearer ${token}`,
@@ -65,7 +65,7 @@ export const portalService = {
      */
     async getMyOrders(): Promise<PortalOrder[]> {
         try {
-            const token = localStorage.getItem("shiv_auth_token");
+            const token = localStorage.getItem("token");
             const response = await fetch(`${API_BASE}/portal/orders`, {
                 headers: {
                     "Authorization": `Bearer ${token}`,
@@ -91,7 +91,7 @@ export const portalService = {
      */
     async downloadInvoice(invoiceId: string): Promise<Blob> {
         try {
-            const token = localStorage.getItem("shiv_auth_token");
+            const token = localStorage.getItem("token");
             const response = await fetch(`${API_BASE}/portal/invoices/${invoiceId}/download`, {
                 headers: {
                     "Authorization": `Bearer ${token}`,
@@ -114,7 +114,7 @@ export const portalService = {
      */
     async initiatePayment(invoiceId: string, amount: number): Promise<{ orderId: string; transactionId: string }> {
         try {
-            const token = localStorage.getItem("shiv_auth_token");
+            const token = localStorage.getItem("token");
             const response = await fetch(`${API_BASE}/portal/invoices/${invoiceId}/pay`, {
                 method: "POST",
                 headers: {
@@ -149,26 +149,22 @@ export const portalService = {
         razorpayOrderId: string;
         razorpaySignature: string;
     }): Promise<PaymentTransaction> {
-        try {
-            const token = localStorage.getItem("shiv_auth_token");
-            const response = await fetch(`${API_BASE}/portal/payments/verify`, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(paymentData),
-            });
+        const token = localStorage.getItem("token");
+        const response = await fetch(`${API_BASE}/portal/payments/verify`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(paymentData),
+        });
 
-            if (!response.ok) {
-                throw new Error("Failed to verify payment");
-            }
-
-            const data: ApiResponse<PaymentTransaction> = await response.json();
-            return data.data;
-        } catch (error) {
-            throw error;
+        if (!response.ok) {
+            throw new Error("Failed to verify payment");
         }
+
+        const data: ApiResponse<PaymentTransaction> = await response.json();
+        return data.data;
     },
 
     /**
@@ -176,7 +172,7 @@ export const portalService = {
      */
     async getMyPayments(): Promise<PaymentTransaction[]> {
         try {
-            const token = localStorage.getItem("shiv_auth_token");
+            const token = localStorage.getItem("token");
             const response = await fetch(`${API_BASE}/portal/payments`, {
                 headers: {
                     "Authorization": `Bearer ${token}`,

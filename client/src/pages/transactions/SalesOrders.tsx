@@ -168,10 +168,10 @@ export const SalesOrders: React.FC = () => {
                             <tbody className="divide-y divide-gray-100">
                                 {orders.map((so) => (
                                     <tr key={so.id} className="hover:bg-gray-50">
-                                        <td className="px-4 py-3 font-medium text-indigo-600">{so.orderNumber}</td>
+                                        <td className="px-4 py-3 font-medium text-indigo-600">{so.orderNumber || so.soNumber}</td>
                                         <td className="px-4 py-3">{so.customerName}</td>
                                         <td className="px-4 py-3">{new Date(so.orderDate).toLocaleDateString()}</td>
-                                        <td className="px-4 py-3 text-right">₹{so.grandTotal.toLocaleString()}</td>
+                                        <td className="px-4 py-3 text-right">₹{(so.grandTotal || so.totalAmount || 0).toLocaleString()}</td>
                                         <td className="px-4 py-3">
                                             <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">{so.status}</span>
                                         </td>

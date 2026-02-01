@@ -1,27 +1,28 @@
 ﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Filter, Save, Archive, Upload, X, Loader2, UserPlus } from "lucide-react";
+import { Plus, Search, Filter, Save, Archive, Upload, X, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button, Input, Card, Select } from "@/components/ui";
+import { Button, Input, Card, Select, ToastContainer } from "@/components/ui";
+import type { ToastType } from "@/components/ui";
 import { contactsApi } from "@/lib/api";
 import type { Contact } from "@/lib/types";
-import { CreateUserModal } from "@/components/CreateUserModal";
+import { getImageUrl } from "@/lib/utils";
 
 // Schema matching the wireframe fields
 const contactSchema = z.object({
     name: z.string().min(1, "Name is required"),
     email: z.string().email("Invalid email"),
     phone: z.string().min(1, "Phone is required"),
-    type: z.enum(["customer", "vendor", "both"]),
+    type: z.enum(["portal", "admin"]),
     address: z.string().optional(),
     city: z.string().optional(),
     state: z.string().optional(),
     country: z.string().optional(),
     pincode: z.string().optional(),
     tags: z.array(z.string()).optional(),
-    image: z.string().optional(),
+    image: z.string().nullable().optional(),
 });
 
 type ContactFormData = z.infer<typeof contactSchema>;
@@ -35,9 +36,17 @@ export const Contacts: React.FC = () => {
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [showCreateUserModal, setShowCreateUserModal] = useState(false);
-    const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+    const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
     const navigate = useNavigate();
+
+    const showToast = (message: string, type: ToastType) => {
+        const id = Date.now().toString();
+        setToasts(prev => [...prev, { id, message, type }]);
+    };
+
+    const removeToast = (id: string) => {
+        setToasts(prev => prev.filter(toast => toast.id !== id));
+    };
 
     // Fetch contacts on mount
     useEffect(() => {
@@ -71,7 +80,7 @@ export const Contacts: React.FC = () => {
     } = useForm<ContactFormData>({
         resolver: zodResolver(contactSchema),
         defaultValues: {
-            type: "customer",
+            type: "portal",
             tags: [],
         },
     });
@@ -80,12 +89,14 @@ export const Contacts: React.FC = () => {
     const [tagInput, setTagInput] = useState("");
 
     const handleAddTag = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter" && tagInput.trim()) {
-            e.preventDefault();
-            if (!watchedTags.includes(tagInput.trim())) {
-                setValue("tags", [...watchedTags, tagInput.trim()]);
+        if (e.key === "Enter") {
+            e.preventDefault(); // Always prevent form submission on Enter
+            if (tagInput.trim()) {
+                if (!watchedTags.includes(tagInput.trim())) {
+                    setValue("tags", [...watchedTags, tagInput.trim()]);
+                }
+                setTagInput("");
             }
-            setTagInput("");
         }
     };
 
@@ -101,32 +112,31 @@ export const Contacts: React.FC = () => {
             setLoading(true);
             setError(null);
 
-            // Use FormData to support both JSON fields and file upload
-            const formData = new FormData();
-            formData.append('name', data.name);
-            formData.append('email', data.email);
-            formData.append('phone', data.phone || '');
-            formData.append('contact_type', data.type); // Backend expects contact_type
-            if (data.address) formData.append('address', data.address);
-            if (data.city) formData.append('city', data.city);
-            if (data.state) formData.append('state', data.state);
-            if (data.country) formData.append('country', data.country);
-            if (data.pincode) formData.append('postal_code', data.pincode); // Backend expects postal_code
-            if (data.tags && data.tags.length > 0) {
-                // Ensure tags is an array and not already stringified
-                const tagsArray = Array.isArray(data.tags) ? data.tags : [];
-                formData.append('tags', JSON.stringify(tagsArray));
-            }
-
-            // Handle image upload
-            const imageInput = document.getElementById('image-upload') as HTMLInputElement;
-            if (imageInput?.files?.[0]) {
-                formData.append('image', imageInput.files[0]);
-            }
+            const userRole = data.type; // portal or admin
+            const token = localStorage.getItem('shiv_auth_token');
 
             if (editingId) {
-                // For update, use fetch directly to send FormData
-                const token = localStorage.getItem('shiv_auth_token');
+                // For update, use FormData to send to /contacts endpoint
+                const formData = new FormData();
+                formData.append('name', data.name);
+                formData.append('email', data.email);
+                formData.append('phone', data.phone || '');
+                formData.append('contact_type', 'customer');
+                if (data.address) formData.append('address', data.address);
+                if (data.city) formData.append('city', data.city);
+                if (data.state) formData.append('state', data.state);
+                if (data.country) formData.append('country', data.country);
+                if (data.pincode) formData.append('postal_code', data.pincode);
+                if (data.tags && data.tags.length > 0) {
+                    const tagsArray = Array.isArray(data.tags) ? data.tags : [];
+                    formData.append('tags', JSON.stringify(tagsArray));
+                }
+
+                const imageInput = document.getElementById('image-upload') as HTMLInputElement;
+                if (imageInput?.files?.[0]) {
+                    formData.append('image', imageInput.files[0]);
+                }
+
                 const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/contacts/${editingId}`, {
                     method: 'PUT',
                     headers: {
@@ -139,21 +149,96 @@ export const Contacts: React.FC = () => {
                     const error = await response.json();
                     throw new Error(error.error || 'Update failed');
                 }
+
+                showToast('Contact updated successfully!', 'success');
             } else {
-                // For create, use fetch directly to send FormData
-                const token = localStorage.getItem('shiv_auth_token');
-                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/contacts`, {
+                // For create, use /register endpoint which creates both contact and user
+                // Generate a proper loginId: sanitized name + timestamp suffix
+                let sanitizedName = data.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                
+                // Ensure minimum length of 6 characters
+                if (sanitizedName.length < 3) {
+                    sanitizedName = 'user' + sanitizedName;
+                }
+                
+                // Add timestamp to ensure uniqueness
+                const timestamp = Date.now().toString().slice(-6);
+                const loginId = sanitizedName + timestamp;
+                
+                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/auth/register`, {
                     method: 'POST',
                     headers: {
+                        'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: formData
+                    body: JSON.stringify({
+                        name: data.name,
+                        loginId: loginId,
+                        email: data.email,
+                        role: userRole,
+                        sendCredentials: true
+                    })
                 });
 
                 if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.error || 'Create failed');
+                    console.error('Register API error response:', error);
+                    
+                    // Extract detailed error message
+                    let errorMessage = error.error || error.message || 'Failed to create user';
+                    
+                    // If there are validation details, show them
+                    if (error.details && Array.isArray(error.details) && error.details.length > 0) {
+                        const detailMessages = error.details.map((d: any) => d.msg || d.message).join(', ');
+                        errorMessage = detailMessages || errorMessage;
+                    }
+                    
+                    throw new Error(errorMessage);
                 }
+
+                const registerResult = await response.json();
+                const contactId = registerResult.user?.contact_id;
+
+                // Now update the contact with additional details including image
+                if (contactId) {
+                    const formData = new FormData();
+                    formData.append('name', data.name);
+                    formData.append('email', data.email);
+                    formData.append('phone', data.phone || '');
+                    formData.append('contact_type', 'customer');
+                    if (data.address) formData.append('address', data.address);
+                    if (data.city) formData.append('city', data.city);
+                    if (data.state) formData.append('state', data.state);
+                    if (data.country) formData.append('country', data.country);
+                    if (data.pincode) formData.append('postal_code', data.pincode);
+                    if (data.tags && data.tags.length > 0) {
+                        const tagsArray = Array.isArray(data.tags) ? data.tags : [];
+                        formData.append('tags', JSON.stringify(tagsArray));
+                    }
+
+                    // Handle image upload
+                    const imageInput = document.getElementById('image-upload') as HTMLInputElement;
+                    if (imageInput?.files?.[0]) {
+                        formData.append('image', imageInput.files[0]);
+                    }
+
+                    const updateResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/contacts/${contactId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: formData
+                    });
+
+                    if (!updateResponse.ok) {
+                        console.warn('User created but contact update failed');
+                    }
+                }
+
+                showToast(
+                    `${userRole === 'admin' ? 'Admin' : 'Portal'} user created successfully! Login ID: ${loginId}. Credentials sent to ${data.email}`,
+                    'success'
+                );
             }
 
             await fetchContacts();
@@ -162,8 +247,10 @@ export const Contacts: React.FC = () => {
             setEditingId(null);
             setImagePreview(null);
         } catch (err: any) {
-            setError(err.message || 'Failed to save contact');
+            const errorMessage = err.message || 'Failed to save contact';
+            setError(errorMessage);
             console.error('Error saving contact:', err);
+            showToast(errorMessage, 'error');
         } finally {
             setLoading(false);
         }
@@ -183,37 +270,40 @@ export const Contacts: React.FC = () => {
         }
         if (!Array.isArray(tags)) tags = [];
 
+        // Get image URL using helper function
+        const rawImageUrl = contact.image || contact.imageUrl || contact.companyLogoUrl;
+        const imageUrl = getImageUrl(rawImageUrl);
+        
         reset({
             name: contact.name,
             email: contact.email,
             phone: contact.phone,
-            type: (contact.type || contact.contactType) as any,
+            type: "portal", // Default to portal when editing
             address: contact.address,
             city: contact.city,
             state: contact.state,
             country: contact.country,
             pincode: contact.pincode || contact.postalCode,
             tags: tags,
-            image: contact.image || contact.imageUrl,
+            image: imageUrl,
         });
+        
+        if (imageUrl) {
+            setImagePreview(imageUrl);
+        } else {
+            setImagePreview(null);
+        }
+        
         setView("form");
     };
 
     const handleNew = () => {
         setEditingId(null);
-        reset({ type: "customer", tags: [] });
+        reset({ type: "portal", tags: [] });
         setView("form");
     };
 
-    const handleCreateUser = () => {
-        if (editingId) {
-            const contact = contacts.find(c => c.id === editingId);
-            if (contact) {
-                setSelectedContact(contact);
-                setShowCreateUserModal(true);
-            }
-        }
-    };
+
 
     const handleArchive = async () => {
         if (!editingId) return;
@@ -274,7 +364,9 @@ export const Contacts: React.FC = () => {
 
     if (view === "list") {
         return (
-            <div className="space-y-6">
+            <>
+                <ToastContainer toasts={toasts} removeToast={removeToast} />
+                <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Contacts/Partners</h1>
@@ -347,7 +439,6 @@ export const Contacts: React.FC = () => {
                                         <th className="px-4 py-3">Phone</th>
                                         <th className="px-4 py-3">Email</th>
                                         <th className="px-4 py-3">City</th>
-                                        <th className="px-4 py-3">Pincode</th>
                                         <th className="px-4 py-3">Type</th>
                                         <th className="px-4 py-3 rounded-tr-lg">Tags</th>
                                     </tr>
@@ -372,9 +463,6 @@ export const Contacts: React.FC = () => {
                                                 <td className="px-4 py-3 text-gray-500">{contact.email}</td>
                                                 <td className="px-4 py-3 text-gray-500">
                                                     {contact.city || "-"}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-500">
-                                                    {contact.pincode || contact.postalCode || "-"}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span
@@ -429,11 +517,14 @@ export const Contacts: React.FC = () => {
                     )}
                 </Card>
             </div>
+            </>
         );
     }
 
     // Form View
     return (
+        <>
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
         <div className="space-y-6">
 
             {/* Header / Actions */}
@@ -442,7 +533,6 @@ export const Contacts: React.FC = () => {
                 <div className="flex items-center justify-between p-4 border-b border-gray-200">
                     <div className="flex items-center space-x-8">
                         <h1 className="text-xl font-bold text-gray-900">Contact Master</h1>
-                        <span className="text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">Akshat</span>
                     </div>
                     <div className="flex items-center space-x-2">
                         <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>Home</Button>
@@ -454,44 +544,10 @@ export const Contacts: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Tab Navigation */}
-                <div className="flex items-center space-x-1 px-4 py-2 bg-gray-50">
-                    <button
-                        onClick={() => setActiveTab('new')}
-                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'new' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                    >
-                        New
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('confirm')}
-                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'confirm' ? 'bg-pink-100 text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                    >
-                        Confirm
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('archived')}
-                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${activeTab === 'archived' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                    >
-                        Archived
-                    </button>
-                </div>
 
                 {/* Action Buttons */}
                 <div className="flex items-center justify-between p-4">
                     <div className="flex items-center space-x-2">
-                        {editingId && (
-                            <Button
-                                variant="primary"
-                                leftIcon={<UserPlus className="w-4 h-4" />}
-                                onClick={handleCreateUser}
-                                disabled={loading}
-                            >
-                                Create User
-                            </Button>
-                        )}
                     </div>
                     <div className="flex items-center space-x-2">
                         {editingId && (
@@ -511,7 +567,7 @@ export const Contacts: React.FC = () => {
                                     onClick={handleRestore}
                                     disabled={loading}
                                 >
-                                    Restore
+                                    Unarchive
                                 </Button>
                             )
                         )}
@@ -521,6 +577,13 @@ export const Contacts: React.FC = () => {
             </div>
             {/* Main Form Content */}
             <Card className="p-8">
+                <form onSubmit={handleSubmit(onSubmit, (validationErrors) => {
+                    // Show first validation error as toast
+                    const firstError = Object.values(validationErrors)[0]?.message;
+                    if (firstError) {
+                        showToast(firstError as string, 'error');
+                    }
+                })}>
                 {error && (
                     <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                         {error}
@@ -559,9 +622,8 @@ export const Contacts: React.FC = () => {
                             <Select
                                 label="Type"
                                 options={[
-                                    { value: "customer", label: "Customer" },
-                                    { value: "vendor", label: "Vendor" },
-                                    { value: "both", label: "Both" },
+                                    { value: "portal", label: "Portal User" },
+                                    { value: "admin", label: "Admin" },
                                 ]}
                                 value={watch("type")}
                                 onValueChange={(val) => setValue("type", val as any)}
@@ -639,9 +701,9 @@ export const Contacts: React.FC = () => {
                             htmlFor="image-upload"
                             className="border-2 border-dashed border-pink-400 rounded-2xl p-8 flex flex-col items-center justify-center text-center h-64 hover:bg-pink-50/50 transition-colors cursor-pointer group bg-white"
                         >
-                            {imagePreview ? (
+                            {(imagePreview || watch('image')) ? (
                                 <div className="relative w-full h-full">
-                                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover rounded-xl" />
+                                    <img src={imagePreview || watch('image') || ''} alt="Preview" className="w-full h-full object-cover rounded-xl" />
                                     <button
                                         type="button"
                                         onClick={(e) => {
@@ -701,7 +763,7 @@ export const Contacts: React.FC = () => {
                         Cancel
                     </Button>
                     <Button
-                        onClick={handleSubmit(onSubmit)}
+                        type="submit"
                         leftIcon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         disabled={loading}
                         className="min-w-[120px]"
@@ -709,24 +771,9 @@ export const Contacts: React.FC = () => {
                         {loading ? 'Saving...' : (editingId ? 'Update' : 'Save')}
                     </Button>
                 </div>
+                </form>
             </Card>
-
-            {/* Create User Modal */}
-            {selectedContact && (
-                <CreateUserModal
-                    isOpen={showCreateUserModal}
-                    onClose={() => {
-                        setShowCreateUserModal(false);
-                        setSelectedContact(null);
-                    }}
-                    contactId={Number(selectedContact.id)}
-                    contactName={selectedContact.name}
-                    contactEmail={selectedContact.email}
-                    onSuccess={() => {
-                        fetchContacts();
-                    }}
-                />
-            )}
-        </div >
+        </div>
+        </>
     );
 };

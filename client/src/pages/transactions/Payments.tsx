@@ -31,6 +31,7 @@ interface Payment {
     referenceType: "invoice" | "bill";
     referenceId: string;
     referenceNumber: string;
+    reference?: string; // Backend field name
     status: "draft" | "confirmed" | "cancelled";
     notes?: string;
     createdAt: string;
@@ -221,9 +222,9 @@ export const Payments: React.FC = () => {
     };
 
     const filteredPayments = payments.filter((payment) =>
-        payment.paymentNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.partnerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.referenceNumber.toLowerCase().includes(searchTerm.toLowerCase())
+        (payment.paymentNumber || '')?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (payment.partnerName || '')?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (payment.referenceNumber || payment.reference || '')?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     if (view === "list") {

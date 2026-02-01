@@ -9,6 +9,9 @@ export { Card, CardHeader, CardContent, CardFooter } from "./Card";
 
 export { Badge, PaymentStatusBadge, OrderStatusBadge } from "./Badge";
 
+export { Toast, ToastContainer } from "./Toast";
+export type { ToastType } from "./Toast";
+
 export { Modal, ModalFooter } from "./Modal";
 
 export { Select } from "./Select";
